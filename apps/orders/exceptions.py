@@ -10,7 +10,7 @@ class StockFlowDomainError(Exception):
 
 class InvalidOrderTransition(StockFlowDomainError):
     code = "INVALID_ORDER_TRANSITION"
-    default_message = "Only draft orders can be reserved."
+    default_message = "The requested order transition is not allowed."
 
 
 class InsufficientStock(StockFlowDomainError):
@@ -36,3 +36,13 @@ class InventoryNotFound(StockFlowDomainError):
 class InvalidOrderItemQuantity(StockFlowDomainError):
     code = "INVALID_ORDER_ITEM_QUANTITY"
     default_message = "Order item quantities must be positive."
+
+
+class InvalidCancellationSource(StockFlowDomainError):
+    code = "INVALID_CANCELLATION_SOURCE"
+    default_message = "Cancellation source must be manual or expiration."
+
+
+class InvalidInventoryState(StockFlowDomainError):
+    code = "INVALID_INVENTORY_STATE"
+    default_message = "Inventory quantities are not valid for this order transition."
