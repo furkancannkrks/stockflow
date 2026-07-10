@@ -56,9 +56,11 @@ class Inventory(models.Model):
 class StockMovement(models.Model):
     class MovementType(models.TextChoices):
         ADJUSTMENT = "adjustment", "Adjustment"
+        STOCK_IN = "stock_in", "Stock in"
         RESERVATION = "reservation", "Reservation"
         RESERVATION_RELEASE = "reservation_release", "Reservation release"
         STOCK_OUT = "stock_out", "Stock out"
+        MANUAL_ADJUSTMENT = "manual_adjustment", "Manual adjustment"
 
     inventory = models.ForeignKey(
         Inventory,
