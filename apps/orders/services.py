@@ -4,6 +4,8 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
+from apps.audit.models import AuditLog
+from apps.audit.services import create_audit_log
 from apps.inventory.models import Inventory, StockMovement
 from apps.orders.exceptions import (
     InactiveProduct,
@@ -71,6 +73,17 @@ def reserve_order(order_id: int, performed_by) -> Order:
         order.reserved_at = timezone.now()
         order.status = Order.Status.RESERVED
         order.save(update_fields=["total_amount", "reserved_at", "status", "updated_at"])
+        create_audit_log(
+            actor=performed_by,
+            action=AuditLog.Action.ORDER_RESERVED,
+            target=order,
+            metadata=_order_audit_metadata(
+                order,
+                items,
+                status_before=Order.Status.DRAFT,
+                status_after=Order.Status.RESERVED,
+            ),
+        )
 
         return order
 
@@ -110,6 +123,17 @@ def confirm_order(order_id: int, performed_by) -> Order:
 
         order.status = Order.Status.CONFIRMED
         order.save(update_fields=["status", "updated_at"])
+        create_audit_log(
+            actor=performed_by,
+            action=AuditLog.Action.ORDER_CONFIRMED,
+            target=order,
+            metadata=_order_audit_metadata(
+                order,
+                items,
+                status_before=Order.Status.RESERVED,
+                status_after=Order.Status.CONFIRMED,
+            ),
+        )
         return order
 
 
@@ -162,6 +186,21 @@ def cancel_order(
 
         order.status = Order.Status.CANCELLED
         order.save(update_fields=["status", "updated_at"])
+        create_audit_log(
+            actor=performed_by,
+            action=AuditLog.Action.ORDER_CANCELLED,
+            target=order,
+            metadata=_order_audit_metadata(
+                order,
+                items,
+                status_before=Order.Status.RESERVED,
+                status_after=Order.Status.CANCELLED,
+                extra={
+                    "source": source,
+                    "reason": reason,
+                },
+            ),
+        )
         return order
 
 
@@ -359,3 +398,41 @@ def _cancellation_description(order: Order, source: str, reason: str | None) -> 
     if reason:
         description = f"{description}; reason={reason}"
     return description
+
+
+def _order_audit_metadata(
+    order: Order,
+    items: list[OrderItem],
+    *,
+    status_before: str,
+    status_after: str,
+    extra: dict | None = None,
+) -> dict:
+    metadata = {
+        "order": {
+            "id": order.id,
+            "order_number": order.order_number,
+            "status": {
+                "before": status_before,
+                "after": status_after,
+            },
+            "total_amount": str(order.total_amount),
+            "reserved_at": order.reserved_at.isoformat() if order.reserved_at else None,
+        },
+        "items": [
+            {
+                "id": item.id,
+                "product_id": item.product_id,
+                "product_sku": item.product.sku,
+                "warehouse_id": item.warehouse_id,
+                "warehouse_code": item.warehouse.code,
+                "quantity": item.quantity,
+                "unit_price": str(item.unit_price),
+                "subtotal": str(item.subtotal),
+            }
+            for item in items
+        ],
+    }
+    if extra:
+        metadata.update(extra)
+    return metadata

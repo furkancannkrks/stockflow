@@ -1,5 +1,7 @@
 from django.db import transaction
 
+from apps.audit.models import AuditLog
+from apps.audit.services import create_audit_log
 from apps.inventory.exceptions import (
     InactiveProduct,
     InactiveWarehouse,
@@ -33,6 +35,8 @@ def adjust_inventory(
         inventory = _get_locked_inventory(product_id, warehouse_id)
         _validate_active_inventory_entities(inventory)
 
+        previous_quantity = inventory.quantity
+        previous_reserved_quantity = inventory.reserved_quantity
         new_quantity, movement_quantity = _calculate_adjustment(inventory, adjustment_type, quantity)
         inventory.quantity = new_quantity
         inventory.save(update_fields=["quantity", "updated_at"])
@@ -45,6 +49,33 @@ def adjust_inventory(
             reference_id=str(inventory.id),
             description=description or "",
             created_by=performed_by,
+        )
+        create_audit_log(
+            actor=performed_by,
+            action=AuditLog.Action.INVENTORY_ADJUSTED,
+            target=inventory,
+            metadata={
+                "adjustment_type": adjustment_type,
+                "description": description or "",
+                "input_quantity": quantity,
+                "movement_quantity": movement_quantity,
+                "quantity": {
+                    "before": previous_quantity,
+                    "after": inventory.quantity,
+                },
+                "reserved_quantity": {
+                    "before": previous_reserved_quantity,
+                    "after": inventory.reserved_quantity,
+                },
+                "product": {
+                    "id": inventory.product_id,
+                    "sku": inventory.product.sku,
+                },
+                "warehouse": {
+                    "id": inventory.warehouse_id,
+                    "code": inventory.warehouse.code,
+                },
+            },
         )
 
         return inventory
