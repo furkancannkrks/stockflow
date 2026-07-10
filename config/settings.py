@@ -1,16 +1,39 @@
 """Django settings for StockFlow."""
-from pathlib import Path
 import os
+from pathlib import Path
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+def load_local_env() -> None:
+    env_path = BASE_DIR / ".env"
+    if not env_path.exists():
+        return
+
+    for line in env_path.read_text().splitlines():
+        cleaned = line.strip()
+        if not cleaned or cleaned.startswith("#") or "=" not in cleaned:
+            continue
+        key, value = cleaned.split("=", 1)
+        os.environ.setdefault(key.strip(), value.strip().strip("\"'"))
+
+
+def env_bool(name: str, default: bool = False) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+load_local_env()
 
 SECRET_KEY = os.getenv(
     "DJANGO_SECRET_KEY",
     "django-insecure-stockflow-development-key-change-me",
 )
 
-DEBUG = os.getenv("DJANGO_DEBUG", "True") == "True"
+DEBUG = env_bool("DJANGO_DEBUG", True)
 
 ALLOWED_HOSTS = [
     host.strip()
@@ -68,13 +91,17 @@ WSGI_APPLICATION = "config.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("POSTGRES_DB", "stockflow"),
-        "USER": os.getenv("POSTGRES_USER", "stockflow"),
-        "PASSWORD": os.getenv("POSTGRES_PASSWORD", "stockflow"),
-        "HOST": os.getenv("POSTGRES_HOST", "localhost"),
-        "PORT": os.getenv("POSTGRES_PORT", "5432"),
+        "NAME": os.getenv("DB_NAME", "stockflow"),
+        "USER": os.getenv("DB_USER", "stockflow"),
+        "PASSWORD": os.getenv("DB_PASSWORD", "stockflow"),
+        "HOST": os.getenv("DB_HOST", "localhost"),
+        "PORT": os.getenv("DB_PORT", "5432"),
     }
 }
+
+
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/1")
 
 
 AUTH_PASSWORD_VALIDATORS = [

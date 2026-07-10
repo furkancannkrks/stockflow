@@ -703,6 +703,9 @@ Before implementing a multi-file feature:
 
 Do not claim success for a command that was not executed.
 
+Environment note: this project is developed on Windows. Use `py -3` instead of
+`python` for all management commands (e.g. `py -3 manage.py migrate`).
+
 ## AI Appendix
 
 Keep notes throughout development about:
