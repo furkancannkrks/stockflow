@@ -12,10 +12,12 @@ from apps.inventory.serializers import (
 )
 from apps.inventory.services import adjust_inventory
 from apps.inventory.selectors import inventory_with_available_quantity
+from apps.users.permissions import InventoryPermission
 
 
 class InventoryViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = InventorySerializer
+    permission_classes = [InventoryPermission]
     queryset = (
         inventory_with_available_quantity()
         .select_related("product", "warehouse")

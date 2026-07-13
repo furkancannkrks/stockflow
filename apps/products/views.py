@@ -7,10 +7,12 @@ from apps.products.filters import ProductFilter
 from apps.products.models import Product, Warehouse
 from apps.products.serializers import ProductSerializer, WarehouseSerializer
 from apps.products.services import update_product
+from apps.users.permissions import ReadOnlyOrManagerPermission
 
 
 class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
+    permission_classes = [ReadOnlyOrManagerPermission]
     queryset = Product.objects.all().order_by("name", "sku")
     filterset_class = ProductFilter
     ordering_fields = [
@@ -44,6 +46,7 @@ class ProductViewSet(viewsets.ModelViewSet):
 
 class WarehouseViewSet(viewsets.ModelViewSet):
     serializer_class = WarehouseSerializer
+    permission_classes = [ReadOnlyOrManagerPermission]
     queryset = Warehouse.objects.all().order_by("name", "code")
     http_method_names = ["get", "post", "patch", "head", "options"]
 

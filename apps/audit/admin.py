@@ -1,6 +1,7 @@
 from django.contrib import admin
 
 from apps.audit.models import AuditLog
+from apps.users.permissions import is_manager
 
 
 @admin.register(AuditLog)
@@ -35,6 +36,12 @@ class AuditLogAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return False
+
+    def has_module_permission(self, request):
+        return is_manager(request.user)
+
+    def has_view_permission(self, request, obj=None):
+        return is_manager(request.user)
 
     def has_change_permission(self, request, obj=None):
         return False

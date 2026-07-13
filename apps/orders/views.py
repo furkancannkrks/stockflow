@@ -16,9 +16,11 @@ from apps.orders.filters import OrderFilter
 from apps.orders.models import Order
 from apps.orders.serializers import CancelOrderSerializer, OrderSerializer, OrderWriteSerializer
 from apps.orders.services import cancel_order, confirm_order, reserve_order, ship_order
+from apps.users.permissions import ReadOnlyOrManagerPermission
 
 
 class OrderViewSet(viewsets.ModelViewSet):
+    permission_classes = [ReadOnlyOrManagerPermission]
     queryset = (
         Order.objects.prefetch_related("items__product", "items__warehouse")
         .all()

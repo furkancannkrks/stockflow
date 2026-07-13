@@ -4,10 +4,10 @@ from django.http import StreamingHttpResponse
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
 from apps.inventory.selectors import low_stock_inventory
+from apps.users.permissions import ManagerOnlyPermission
 
 
 CSV_COLUMNS = [
@@ -56,7 +56,7 @@ def low_stock_csv_rows(generated_at):
 
 
 class LowStockCSVView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [ManagerOnlyPermission]
 
     @extend_schema(
         operation_id="export_low_stock_csv",

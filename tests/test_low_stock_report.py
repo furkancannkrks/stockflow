@@ -121,7 +121,7 @@ def test_low_stock_csv_uses_one_query_for_multiple_rows(client, django_assert_nu
 def test_low_stock_csv_rejects_unauthenticated_requests():
     response = APIClient().get("/api/reports/low-stock.csv")
 
-    assert response.status_code == 403
+    assert response.status_code == 401
 
 
 def test_openapi_documents_low_stock_csv(client):
