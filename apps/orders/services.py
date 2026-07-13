@@ -22,7 +22,7 @@ from apps.orders.models import Order, OrderItem
 SUPPORTED_CANCELLATION_SOURCES = {"manual", "expiration"}
 
 
-def reserve_order(order_id: int, performed_by) -> Order:
+def reserve_order(order_id: int, performed_by, correlation_id: str = "") -> Order:
     with transaction.atomic():
         order = _get_locked_order_for_transition(order_id, Order.Status.DRAFT)
 
@@ -83,6 +83,7 @@ def reserve_order(order_id: int, performed_by) -> Order:
                 status_before=Order.Status.DRAFT,
                 status_after=Order.Status.RESERVED,
             ),
+            correlation_id=correlation_id,
         )
 
         return order

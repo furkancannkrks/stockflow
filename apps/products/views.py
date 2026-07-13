@@ -3,6 +3,7 @@ from rest_framework import status, viewsets
 from rest_framework.response import Response
 
 from apps.api import map_domain_exception
+from apps.products.filters import ProductFilter
 from apps.products.models import Product, Warehouse
 from apps.products.serializers import ProductSerializer, WarehouseSerializer
 from apps.products.services import update_product
@@ -11,6 +12,18 @@ from apps.products.services import update_product
 class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
     queryset = Product.objects.all().order_by("name", "sku")
+    filterset_class = ProductFilter
+    ordering_fields = [
+        "name",
+        "sku",
+        "category",
+        "unit_price",
+        "low_stock_threshold",
+        "is_active",
+        "created_at",
+        "updated_at",
+    ]
+    ordering = ["name", "sku"]
 
     def partial_update(self, request, *args, **kwargs):
         product = self.get_object()

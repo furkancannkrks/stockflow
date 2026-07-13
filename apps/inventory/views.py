@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from apps.api import map_domain_exception
+from apps.inventory.filters import InventoryFilter
 from apps.inventory.models import Inventory
 from apps.inventory.serializers import (
     InventoryAdjustmentSerializer,
@@ -10,15 +11,27 @@ from apps.inventory.serializers import (
     StockMovementSerializer,
 )
 from apps.inventory.services import adjust_inventory
+from apps.inventory.selectors import inventory_with_available_quantity
 
 
 class InventoryViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = InventorySerializer
     queryset = (
-        Inventory.objects.select_related("product", "warehouse")
-        .all()
+        inventory_with_available_quantity()
+        .select_related("product", "warehouse")
         .order_by("product__sku", "warehouse__code")
     )
+    filterset_class = InventoryFilter
+    ordering_fields = [
+        "product__sku",
+        "warehouse__code",
+        "quantity",
+        "reserved_quantity",
+        "available_quantity_value",
+        "created_at",
+        "updated_at",
+    ]
+    ordering = ["product__sku", "warehouse__code"]
 
     @action(detail=False, methods=["post"], url_path="adjustments")
     def adjustments(self, request):

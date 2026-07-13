@@ -243,14 +243,20 @@ def test_order_transition_actions_use_services_and_error_structure(client):
     order = create_order()
     create_order_item(order, product, warehouse, quantity=2)
 
-    reserve_response = client.post(f"/api/orders/{order.id}/reserve/")
+    reserve_response = client.post(
+        f"/api/orders/{order.id}/reserve/",
+        HTTP_IDEMPOTENCY_KEY="reserve-api-1",
+    )
     assert reserve_response.status_code == 200
     assert reserve_response.data["status"] == Order.Status.RESERVED
     inventory.refresh_from_db()
     assert inventory.quantity == 10
     assert inventory.reserved_quantity == 2
 
-    repeated_reserve = client.post(f"/api/orders/{order.id}/reserve/")
+    repeated_reserve = client.post(
+        f"/api/orders/{order.id}/reserve/",
+        HTTP_IDEMPOTENCY_KEY="reserve-api-2",
+    )
     assert repeated_reserve.status_code == 409
     assert repeated_reserve.data["error"]["code"] == "INVALID_ORDER_TRANSITION"
 

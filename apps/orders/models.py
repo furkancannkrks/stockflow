@@ -1,7 +1,14 @@
 from decimal import Decimal
+from datetime import timedelta
 
+from django.conf import settings
 from django.db import models
 from django.db.models import Q
+from django.utils import timezone
+
+
+def default_idempotency_expires_at():
+    return timezone.now() + timedelta(days=30)
 
 
 class Order(models.Model):
@@ -102,3 +109,51 @@ class OrderItem(models.Model):
 
     def __str__(self) -> str:
         return f"{self.quantity} x {self.product.sku} for {self.order.order_number}"
+
+
+class IdempotencyRecord(models.Model):
+    class Status(models.TextChoices):
+        IN_PROGRESS = "in_progress", "In progress"
+        COMPLETED = "completed", "Completed"
+        FAILED = "failed", "Failed"
+
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="idempotency_records",
+    )
+    key = models.CharField(max_length=255)
+    operation = models.CharField(max_length=100)
+    order = models.ForeignKey(
+        Order,
+        on_delete=models.CASCADE,
+        related_name="idempotency_records",
+    )
+    request_fingerprint = models.CharField(max_length=64)
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.IN_PROGRESS,
+    )
+    response_status_code = models.PositiveIntegerField(null=True, blank=True)
+    response_body = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    expires_at = models.DateTimeField(default=default_idempotency_expires_at)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+        indexes = [
+            models.Index(fields=["actor", "operation", "key"], name="idem_scope_idx"),
+            models.Index(fields=["status"], name="idem_status_idx"),
+            models.Index(fields=["expires_at"], name="idem_expires_at_idx"),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["actor", "operation", "key"],
+                name="unique_idempotency_actor_operation_key",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.operation}:{self.key}"
