@@ -57,3 +57,30 @@ body {
 .tabular-numbers {
   font-variant-numeric: tabular-nums;
 }
+
+.filter-bar,
+.detail-panel,
+.form-panel {
+  background: var(--bs-body-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 6px;
+  padding: 1.25rem;
+}
+
+.form-panel {
+  max-width: 720px;
+}
+
+.detail-label {
+  color: var(--bs-secondary-color);
+  font-size: 0.78rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  text-transform: uppercase;
+}
+
+.metric-inline {
+  font-size: 1.5rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}

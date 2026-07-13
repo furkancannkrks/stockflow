@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Products | StockFlow{% endblock %}
+
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div><h1 class="h3 mb-1">Products</h1><p class="text-body-secondary mb-0">Catalog and inventory totals</p></div>
+    {% if can_manage_catalog %}<a class="btn btn-primary" href="{% url 'products:product-create' %}">Create product</a>{% endif %}
+  </div>
+
+  <form method="get" class="filter-bar mb-4">
+    <div class="row g-3 align-items-end">
+      <div class="col-lg-3"><label class="form-label" for="{{ filter_form.q.id_for_label }}">Search</label>{{ filter_form.q }}</div>
+      <div class="col-lg-2"><label class="form-label" for="{{ filter_form.category.id_for_label }}">Category</label>{{ filter_form.category }}</div>
+      <div class="col-lg-2"><label class="form-label" for="{{ filter_form.is_active.id_for_label }}">Active</label>{{ filter_form.is_active }}</div>
+      <div class="col-lg-2"><label class="form-label" for="{{ filter_form.warehouse.id_for_label }}">Warehouse</label>{{ filter_form.warehouse }}</div>
+      <div class="col-lg-2"><label class="form-label" for="{{ filter_form.low_stock.id_for_label }}">Low stock</label>{{ filter_form.low_stock }}</div>
+      <div class="col-lg-1 d-grid"><button class="btn btn-secondary" type="submit">Filter</button></div>
+    </div>
+  </form>
+
+  <section class="dashboard-section">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead><tr><th>Product</th><th>Category</th><th class="text-end">Unit price</th><th class="text-end">Total stock</th><th class="text-end">Available</th><th>Status</th></tr></thead>
+        <tbody>
+          {% for product in page_obj %}
+            <tr>
+              <td><a class="fw-semibold text-decoration-none" href="{% url 'products:product-detail' product.id %}">{{ product.name }}</a><div class="small text-body-secondary">{{ product.sku }}</div></td>
+              <td>{{ product.category|default:"—" }}</td>
+              <td class="text-end tabular-numbers">{{ product.unit_price }}</td>
+              <td class="text-end tabular-numbers">{{ product.total_inventory }}</td>
+              <td class="text-end tabular-numbers">{{ product.available_inventory }}</td>
+              <td>
+                {% if product.has_low_stock %}<span class="badge text-bg-warning">Low stock</span>{% endif %}
+                {% if product.is_active %}<span class="badge text-bg-success">Active</span>{% else %}<span class="badge text-bg-secondary">Inactive</span>{% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="6" class="empty-state">No products match these filters.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% include "partials/pagination.html" %}
+  </section>
+{% endblock %}

@@ -14,6 +14,8 @@ def health_check(request):
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("", include("apps.users.urls")),
+    path("products/", include("apps.products.browser_urls", namespace="products")),
+    path("inventory/", include("apps.inventory.browser_urls", namespace="inventory")),
     path("api/", include("apps.urls")),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),

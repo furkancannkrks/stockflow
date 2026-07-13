@@ -1,9 +1,11 @@
 import django_filters
-from django.db.models import Exists, OuterRef, Q
+from django.db.models import Q
 
-from apps.inventory.models import Inventory
 from apps.products.models import Product
-from apps.products.selectors import annotate_product_low_stock
+from apps.products.selectors import (
+    filter_products_by_low_stock,
+    filter_products_by_warehouse,
+)
 
 
 class ProductFilter(django_filters.FilterSet):
@@ -26,14 +28,7 @@ class ProductFilter(django_filters.FilterSet):
         )
 
     def filter_warehouse(self, queryset, name, value):
-        warehouse_inventory = Inventory.objects.filter(
-            product_id=OuterRef("pk"),
-            warehouse_id=value,
-        )
-        return queryset.annotate(
-            has_inventory_in_warehouse=Exists(warehouse_inventory)
-        ).filter(has_inventory_in_warehouse=True)
+        return filter_products_by_warehouse(queryset, value)
 
     def filter_low_stock(self, queryset, name, value):
-        queryset = annotate_product_low_stock(queryset)
-        return queryset.filter(has_low_stock=value)
+        return filter_products_by_low_stock(queryset, value)

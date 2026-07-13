@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Inventory | StockFlow{% endblock %}
+
+{% block content %}
+  <div class="mb-4"><h1 class="h3 mb-1">Inventory</h1><p class="text-body-secondary mb-0">Stock by product and warehouse</p></div>
+  <form method="get" class="filter-bar mb-4">
+    <div class="row g-3 align-items-end">
+      <div class="col-lg-5"><label class="form-label" for="{{ filter_form.q.id_for_label }}">Search</label>{{ filter_form.q }}</div>
+      <div class="col-lg-3"><label class="form-label" for="{{ filter_form.warehouse.id_for_label }}">Warehouse</label>{{ filter_form.warehouse }}</div>
+      <div class="col-lg-3"><label class="form-label" for="{{ filter_form.stock_status.id_for_label }}">Stock status</label>{{ filter_form.stock_status }}</div>
+      <div class="col-lg-1 d-grid"><button class="btn btn-secondary" type="submit">Filter</button></div>
+    </div>
+  </form>
+  <section class="dashboard-section">
+    <div class="table-responsive"><table class="table table-hover align-middle mb-0">
+      <thead><tr><th>Product</th><th>Warehouse</th><th class="text-end">Quantity</th><th class="text-end">Reserved</th><th class="text-end">Available</th><th></th></tr></thead>
+      <tbody>
+        {% for inventory in page_obj %}
+          <tr>
+            <td><a class="fw-semibold text-decoration-none" href="{% url 'products:product-detail' inventory.product.id %}">{{ inventory.product.name }}</a><div class="small text-body-secondary">{{ inventory.product.sku }}</div></td>
+            <td>{{ inventory.warehouse.name }}<div class="small text-body-secondary">{{ inventory.warehouse.code }}</div></td>
+            <td class="text-end">{{ inventory.quantity }}</td><td class="text-end">{{ inventory.reserved_quantity }}</td><td class="text-end fw-semibold">{{ inventory.available_quantity_value }}</td>
+            <td class="text-end"><a class="btn btn-sm btn-outline-secondary" href="{% url 'inventory:inventory-detail' inventory.id %}">View</a></td>
+          </tr>
+        {% empty %}<tr><td colspan="6" class="empty-state">No inventory records match these filters.</td></tr>{% endfor %}
+      </tbody>
+    </table></div>
+    {% include "partials/pagination.html" %}
+  </section>
+{% endblock %}
