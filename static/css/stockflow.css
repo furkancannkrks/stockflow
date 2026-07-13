@@ -1,0 +1,59 @@
+body {
+  min-width: 320px;
+}
+
+.navbar-brand {
+  letter-spacing: 0;
+}
+
+.card,
+.dashboard-section {
+  border-radius: 6px;
+}
+
+.metric-label {
+  color: var(--bs-secondary-color);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.metric-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-top: 0.35rem;
+}
+
+.dashboard-section {
+  background: var(--bs-body-bg);
+  border: 1px solid var(--bs-border-color);
+  overflow: hidden;
+}
+
+.section-heading {
+  border-bottom: 1px solid var(--bs-border-color);
+  padding: 1rem 1.25rem;
+}
+
+.dashboard-section .table > :not(caption) > * > * {
+  padding: 0.8rem 1.25rem;
+}
+
+.dashboard-section thead th {
+  background: var(--bs-tertiary-bg);
+  color: var(--bs-secondary-color);
+  font-size: 0.76rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.empty-state {
+  color: var(--bs-secondary-color) !important;
+  padding: 2.5rem 1.25rem !important;
+  text-align: center;
+}
+
+.tabular-numbers {
+  font-variant-numeric: tabular-nums;
+}

@@ -261,7 +261,7 @@ def test_browser_login_and_logout(client):
     assert login_page.status_code == 200
     assert b"csrfmiddlewaretoken" in login_page.content
     assert login_response.status_code == 302
-    assert login_response.url == "/api/"
+    assert login_response.url == "/"
     assert client.session["_auth_user_id"] == str(user.id)
 
     logout_response = client.post("/logout/")

@@ -1,0 +1,30 @@
+<nav class="navbar navbar-expand-xl navbar-dark bg-dark border-bottom" aria-label="Primary navigation">
+  <div class="container-fluid px-4">
+    <a class="navbar-brand fw-semibold" href="{% url 'dashboard' %}">StockFlow</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#stockflowNavigation" aria-controls="stockflowNavigation" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="stockflowNavigation">
+      <ul class="navbar-nav me-auto mb-2 mb-xl-0">
+        <li class="nav-item"><a class="nav-link active" aria-current="page" href="{% url 'dashboard' %}">Dashboard</a></li>
+        <li class="nav-item"><a class="nav-link" href="{% url 'dashboard' %}#low-stock-products">Products</a></li>
+        <li class="nav-item"><a class="nav-link" href="{% url 'dashboard' %}#low-stock-products">Inventory</a></li>
+        <li class="nav-item"><a class="nav-link" href="{% url 'dashboard' %}#recent-orders">Orders</a></li>
+        <li class="nav-item"><a class="nav-link" href="{% url 'dashboard' %}#summary">Warehouses</a></li>
+        <li class="nav-item"><a class="nav-link" href="{% url 'dashboard' %}#recent-stock-movements">Stock Movements</a></li>
+        {% if can_export_reports %}
+          <li class="nav-item"><a class="nav-link" href="{% url 'low-stock-csv' %}">Reports</a></li>
+        {% else %}
+          <li class="nav-item"><span class="nav-link disabled" aria-disabled="true">Reports</span></li>
+        {% endif %}
+      </ul>
+      <div class="d-flex align-items-center gap-3 text-white-50">
+        <span class="small">{{ user.username }}</span>
+        <form method="post" action="{% url 'logout' %}">
+          {% csrf_token %}
+          <button class="btn btn-outline-light btn-sm" type="submit">Logout</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</nav>
