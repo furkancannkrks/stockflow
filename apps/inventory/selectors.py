@@ -9,3 +9,9 @@ def inventory_with_available_quantity(queryset=None):
     return queryset.annotate(
         available_quantity_value=F("quantity") - F("reserved_quantity")
     )
+
+
+def low_stock_inventory(queryset=None):
+    return inventory_with_available_quantity(queryset).filter(
+        available_quantity_value__lte=F("product__low_stock_threshold")
+    )

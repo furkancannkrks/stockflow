@@ -1,8 +1,10 @@
 import django_filters
-from django.db.models import F
 
 from apps.inventory.models import Inventory
-from apps.inventory.selectors import inventory_with_available_quantity
+from apps.inventory.selectors import (
+    inventory_with_available_quantity,
+    low_stock_inventory,
+)
 
 
 class InventoryFilter(django_filters.FilterSet):
@@ -22,9 +24,7 @@ class InventoryFilter(django_filters.FilterSet):
 
     def filter_low_stock(self, queryset, name, value):
         queryset = self._with_available_quantity(queryset)
-        low_stock = queryset.filter(
-            available_quantity_value__lte=F("product__low_stock_threshold")
-        )
+        low_stock = low_stock_inventory(queryset)
         if value:
             return low_stock
         return queryset.exclude(pk__in=low_stock.values("pk"))
