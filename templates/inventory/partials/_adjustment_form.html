@@ -1,0 +1,16 @@
+<section id="inventory-adjustment-region" class="form-panel mb-4">
+  {% if adjustment_success %}<div class="alert alert-success" role="status">{{ adjustment_success }}</div>{% endif %}
+  <form
+    method="post"
+    action="{% url 'inventory:inventory-adjust' inventory.id %}"
+    hx-post="{% url 'inventory:inventory-adjust' inventory.id %}"
+    hx-target="#inventory-adjustment-region"
+    hx-swap="outerHTML"
+    hx-disabled-elt="find button"
+    novalidate
+  >
+    {% csrf_token %}
+    {% include "partials/form_fields.html" %}
+    <div class="d-flex gap-2 pt-2"><button class="btn btn-primary" type="submit">Apply adjustment</button><a class="btn btn-outline-secondary" href="{% url 'inventory:inventory-detail' inventory.id %}">Cancel</a></div>
+  </form>
+</section>

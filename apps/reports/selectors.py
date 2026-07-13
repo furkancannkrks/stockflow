@@ -13,7 +13,7 @@ from apps.products.selectors import annotate_product_stock_status
 DASHBOARD_LIST_LIMIT = 8
 
 
-def dashboard_data(list_limit=DASHBOARD_LIST_LIMIT):
+def dashboard_summary_data():
     product_counts = annotate_product_stock_status(Product.objects.all()).aggregate(
         total_products=Count("id"),
         low_stock_products=Count("id", filter=Q(has_low_stock=True)),
@@ -35,6 +35,11 @@ def dashboard_data(list_limit=DASHBOARD_LIST_LIMIT):
         "today_stock_movements": StockMovement.objects.filter(
             created_at__gte=today_start
         ).count(),
+    }
+
+
+def dashboard_recent_movements_data(list_limit=DASHBOARD_LIST_LIMIT):
+    return {
         "recent_stock_movements": list(
             StockMovement.objects.select_related(
                 "inventory__product",
@@ -42,6 +47,11 @@ def dashboard_data(list_limit=DASHBOARD_LIST_LIMIT):
                 "created_by",
             )[:list_limit]
         ),
+    }
+
+
+def dashboard_list_data(list_limit=DASHBOARD_LIST_LIMIT):
+    return {
         "low_stock_inventory": list(
             low_stock_inventory()
             .select_related("product", "warehouse")
@@ -50,4 +60,12 @@ def dashboard_data(list_limit=DASHBOARD_LIST_LIMIT):
             ]
         ),
         "recent_orders": list(Order.objects.all()[:list_limit]),
+    }
+
+
+def dashboard_data(list_limit=DASHBOARD_LIST_LIMIT):
+    return {
+        **dashboard_summary_data(),
+        **dashboard_recent_movements_data(list_limit),
+        **dashboard_list_data(list_limit),
     }

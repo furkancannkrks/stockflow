@@ -5,26 +5,13 @@
 {% block content %}
   <div class="d-flex justify-content-between align-items-start gap-3 mb-4">
     <div><a class="small text-decoration-none" href="{% url 'orders:order-list' %}">Orders</a><h1 class="h3 mt-2 mb-1">{{ order.order_number }}</h1><p class="text-body-secondary mb-0">{{ order.customer_name }}</p></div>
-    {% if can_manage_orders %}
-      <div class="d-flex flex-wrap justify-content-end gap-2">
-        {% if order.status == 'draft' %}
-          <a class="btn btn-outline-primary" href="{% url 'orders:order-update' order.id %}">Edit draft</a>
-          <form method="post" action="{% url 'orders:order-reserve' order.id %}">{% csrf_token %}<button class="btn btn-primary" type="submit">Reserve</button></form>
-        {% elif order.status == 'reserved' %}
-          <form method="post" action="{% url 'orders:order-confirm' order.id %}">{% csrf_token %}<button class="btn btn-primary" type="submit">Confirm</button></form>
-          <form method="post" action="{% url 'orders:order-cancel' order.id %}" class="d-flex gap-2">{% csrf_token %}{{ cancel_form.reason }}<button class="btn btn-outline-danger" type="submit">Cancel</button></form>
-        {% elif order.status == 'confirmed' %}
-          <form method="post" action="{% url 'orders:order-ship' order.id %}">{% csrf_token %}<button class="btn btn-success" type="submit">Ship</button></form>
-        {% endif %}
-      </div>
-    {% endif %}
+    {% include "orders/partials/_status_actions.html" %}
   </div>
 
   <section class="detail-panel mb-4">
     <div class="row g-4">
       <div class="col-md-3"><div class="detail-label">Customer</div><div>{{ order.customer_name }}</div></div>
       <div class="col-md-3"><div class="detail-label">Email</div><div>{{ order.customer_email }}</div></div>
-      <div class="col-md-2"><div class="detail-label">Status</div><div>{{ order.get_status_display }}</div></div>
       <div class="col-md-2"><div class="detail-label">Total amount</div><div class="metric-inline">{{ order.total_amount }}</div></div>
       <div class="col-md-2"><div class="detail-label">Reserved at</div><div>{{ order.reserved_at|date:"M j, Y H:i"|default:"—" }}</div></div>
       <div class="col-md-3"><div class="detail-label">Created</div><div>{{ order.created_at|date:"M j, Y H:i" }}</div></div>
@@ -45,3 +32,5 @@
     </table></div>
   </section>
 {% endblock %}
+
+{% block scripts %}{% include "partials/htmx_script.html" %}{% endblock %}

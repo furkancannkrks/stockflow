@@ -1,0 +1,13 @@
+<section
+  id="inventory-summary"
+  class="detail-panel mb-4"
+  {% if inventory_summary_oob %}hx-swap-oob="outerHTML"{% endif %}
+>
+  <div class="row g-4">
+    <div class="col-md-3"><div class="detail-label">Product SKU</div><div><a href="{% url 'products:product-detail' inventory.product.id %}">{{ inventory.product.sku }}</a></div></div>
+    <div class="col-md-3"><div class="detail-label">Warehouse code</div><div>{{ inventory.warehouse.code }}</div></div>
+    <div class="col-md-2"><div class="detail-label">Quantity</div><div class="metric-inline">{{ inventory.quantity }}</div></div>
+    <div class="col-md-2"><div class="detail-label">Reserved</div><div class="metric-inline">{{ inventory.reserved_quantity }}</div></div>
+    <div class="col-md-2"><div class="detail-label">Available</div><div class="metric-inline">{{ inventory.available_quantity_value }}</div></div>
+  </div>
+</section>

@@ -142,7 +142,10 @@ def test_dashboard_renders_base_navigation_and_sections(client):
     ]:
         assert label in content
     assert "/api/reports/low-stock.csv" in content
-    assert "hx-" not in content
+    assert 'hx-get="/dashboard/summary/"' in content
+    assert 'hx-trigger="every 60s"' in content
+    assert 'hx-get="/dashboard/recent-movements/"' in content
+    assert 'hx-trigger="every 120s"' in content
 
 
 def test_warehouse_staff_dashboard_disables_report_export(client):

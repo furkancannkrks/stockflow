@@ -94,6 +94,10 @@ body {
   padding: 1rem 1.25rem;
 }
 
+.order-status-actions {
+  min-width: min(100%, 20rem);
+}
+
 .order-item-row:last-child {
   border-bottom: 0;
 }

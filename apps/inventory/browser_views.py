@@ -1,8 +1,11 @@
 from django.contrib import messages
 from django.core.paginator import Paginator
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.decorators import method_decorator
+from django.views.decorators.vary import vary_on_headers
 from django.views.generic import FormView, TemplateView
 
+from apps.htmx import is_htmx_request
 from apps.inventory.exceptions import (
     InactiveProduct,
     InactiveWarehouse,
@@ -74,8 +77,10 @@ class InventoryDetailView(StockFlowUserRequiredMixin, TemplateView):
         return context
 
 
+@method_decorator(vary_on_headers("HX-Request"), name="dispatch")
 class InventoryAdjustmentView(StockFlowUserRequiredMixin, FormView):
     template_name = "inventory/inventory_adjustment_form.html"
+    partial_template_name = "inventory/partials/_adjustment_form.html"
     form_class = InventoryAdjustmentForm
 
     def get_inventory(self):
@@ -99,7 +104,28 @@ class InventoryAdjustmentView(StockFlowUserRequiredMixin, FormView):
             )
         except INVENTORY_ADJUSTMENT_ERRORS as exc:
             form.add_error(None, exc.message)
+            for detail in exc.details:
+                if detail.get("reason"):
+                    form.add_error(None, detail["reason"])
             return self.form_invalid(form)
+
+        if is_htmx_request(self.request):
+            self.inventory = get_object_or_404(
+                inventory_list_queryset(),
+                pk=adjusted.id,
+            )
+            context = self.get_context_data(
+                form=self.get_form_class()(),
+                adjustment_success=(
+                    f"Inventory for {self.inventory.product.sku} was adjusted "
+                    "successfully."
+                ),
+            )
+            return render(
+                self.request,
+                "inventory/partials/_adjustment_result.html",
+                context,
+            )
 
         messages.success(
             self.request,
@@ -109,5 +135,18 @@ class InventoryAdjustmentView(StockFlowUserRequiredMixin, FormView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["inventory"] = self.get_inventory()
+        inventory = self.get_inventory()
+        context.update(
+            {
+                "inventory": inventory,
+                "recent_movements": list(
+                    recent_movements_for_inventory(inventory.id)
+                ),
+            }
+        )
         return context
+
+    def render_to_response(self, context, **response_kwargs):
+        if is_htmx_request(self.request):
+            return render(self.request, self.partial_template_name, context)
+        return super().render_to_response(context, **response_kwargs)

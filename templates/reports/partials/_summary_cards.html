@@ -1,0 +1,30 @@
+<section
+  id="summary"
+  class="row g-3 mb-4"
+  aria-label="Summary"
+  hx-get="{% url 'dashboard-summary' %}"
+  hx-trigger="every 60s"
+  hx-swap="outerHTML"
+>
+  <div class="col-sm-6 col-lg-4 col-xl">
+    <div class="card h-100 border-0 shadow-sm"><div class="card-body"><div class="metric-label">Total products</div><div class="metric-value">{{ total_products }}</div></div></div>
+  </div>
+  <div class="col-sm-6 col-lg-4 col-xl">
+    <div class="card h-100 border-0 shadow-sm"><div class="card-body"><div class="metric-label">Total warehouses</div><div class="metric-value">{{ total_warehouses }}</div></div></div>
+  </div>
+  <div class="col-sm-6 col-lg-4 col-xl">
+    <div class="card h-100 border-warning-subtle shadow-sm"><div class="card-body"><div class="metric-label">Low-stock products</div><div class="metric-value">{{ low_stock_products }}</div></div></div>
+  </div>
+  <div class="col-sm-6 col-lg-4 col-xl">
+    <div class="card h-100 border-danger-subtle shadow-sm"><div class="card-body"><div class="metric-label">Out-of-stock products</div><div class="metric-value">{{ out_of_stock_products }}</div></div></div>
+  </div>
+  <div class="col-sm-6 col-lg-4 col-xl">
+    <div class="card h-100 border-0 shadow-sm"><div class="card-body"><div class="metric-label">Reserved orders</div><div class="metric-value">{{ reserved_orders }}</div></div></div>
+  </div>
+  <div class="col-sm-6 col-lg-4 col-xl">
+    <div class="card h-100 border-0 shadow-sm"><div class="card-body"><div class="metric-label">Confirmed orders</div><div class="metric-value">{{ confirmed_orders }}</div></div></div>
+  </div>
+  <div class="col-sm-6 col-lg-4 col-xl">
+    <div class="card h-100 border-0 shadow-sm"><div class="card-body"><div class="metric-label">Today's stock movements</div><div class="metric-value">{{ today_stock_movements }}</div></div></div>
+  </div>
+</section>

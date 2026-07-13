@@ -7,24 +7,6 @@
     <div><a class="small text-decoration-none" href="{% url 'inventory:inventory-list' %}">Inventory</a><h1 class="h3 mt-2 mb-1">{{ inventory.product.name }}</h1><p class="text-body-secondary mb-0">{{ inventory.warehouse.name }}</p></div>
     {% if can_adjust_inventory %}<a class="btn btn-primary" href="{% url 'inventory:inventory-adjust' inventory.id %}">Adjust stock</a>{% endif %}
   </div>
-  <section class="detail-panel mb-4">
-    <div class="row g-4">
-      <div class="col-md-3"><div class="detail-label">Product SKU</div><div><a href="{% url 'products:product-detail' inventory.product.id %}">{{ inventory.product.sku }}</a></div></div>
-      <div class="col-md-3"><div class="detail-label">Warehouse code</div><div>{{ inventory.warehouse.code }}</div></div>
-      <div class="col-md-2"><div class="detail-label">Quantity</div><div class="metric-inline">{{ inventory.quantity }}</div></div>
-      <div class="col-md-2"><div class="detail-label">Reserved</div><div class="metric-inline">{{ inventory.reserved_quantity }}</div></div>
-      <div class="col-md-2"><div class="detail-label">Available</div><div class="metric-inline">{{ inventory.available_quantity_value }}</div></div>
-    </div>
-  </section>
-  <section class="dashboard-section">
-    <div class="section-heading"><h2 class="h5 mb-0">Recent stock movements</h2></div>
-    <div class="table-responsive"><table class="table table-hover align-middle mb-0">
-      <thead><tr><th>Created</th><th>Type</th><th class="text-end">Quantity</th><th>Reference</th><th>Description</th><th>Created by</th></tr></thead>
-      <tbody>
-        {% for movement in recent_movements %}
-          <tr><td class="text-nowrap">{{ movement.created_at|date:"M j, Y H:i" }}</td><td>{{ movement.get_movement_type_display }}</td><td class="text-end">{{ movement.quantity }}</td><td>{{ movement.reference_type|default:"—" }}</td><td>{{ movement.description|default:"—" }}</td><td>{{ movement.created_by|default:"System" }}</td></tr>
-        {% empty %}<tr><td colspan="6" class="empty-state">No movements for this inventory record.</td></tr>{% endfor %}
-      </tbody>
-    </table></div>
-  </section>
+  {% include "inventory/partials/_inventory_summary.html" %}
+  {% include "inventory/partials/_recent_movements.html" %}
 {% endblock %}

@@ -1,10 +1,13 @@
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.decorators import method_decorator
 from django.views import View
+from django.views.decorators.vary import vary_on_headers
 from django.views.generic import TemplateView
 
+from apps.htmx import is_htmx_request
 from apps.orders.exceptions import InsufficientStock, StockFlowDomainError
 from apps.orders.forms import (
     CancelOrderForm,
@@ -140,6 +143,7 @@ class OrderUpdateView(DraftOrderFormView):
         return self.order
 
 
+@method_decorator(vary_on_headers("HX-Request"), name="dispatch")
 class OrderActionView(ManagerRequiredMixin, View):
     http_method_names = ["post"]
     success_message = "Order updated."
@@ -147,15 +151,28 @@ class OrderActionView(ManagerRequiredMixin, View):
     def perform_action(self, order_id):
         raise NotImplementedError
 
+    def render_htmx_result(self, order_id, **context):
+        context.update(
+            {
+                "order": get_object_or_404(order_detail_queryset(), pk=order_id),
+                "cancel_form": CancelOrderForm(),
+            }
+        )
+        return render(
+            self.request,
+            "orders/partials/_status_result.html",
+            context,
+        )
+
     def post(self, request, pk):
         get_object_or_404(Order, pk=pk)
+        action_errors = []
         try:
             order = self.perform_action(pk)
         except InsufficientStock as exc:
-            messages.error(request, exc.message)
+            action_errors.append(exc.message)
             for detail in exc.details:
-                messages.error(
-                    request,
+                action_errors.append(
                     (
                         f"{detail['product_sku']} at {detail['warehouse_code']}: "
                         f"requested {detail['requested_quantity']}, "
@@ -163,10 +180,20 @@ class OrderActionView(ManagerRequiredMixin, View):
                     ),
                 )
         except StockFlowDomainError as exc:
-            messages.error(request, exc.message)
+            action_errors.append(exc.message)
         else:
+            if is_htmx_request(request):
+                return self.render_htmx_result(
+                    order.id,
+                    action_success=self.success_message,
+                )
             messages.success(request, self.success_message)
             return redirect("orders:order-detail", pk=order.id)
+
+        if is_htmx_request(request):
+            return self.render_htmx_result(pk, action_errors=action_errors)
+        for error in action_errors:
+            messages.error(request, error)
         return redirect("orders:order-detail", pk=pk)
 
 

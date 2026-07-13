@@ -1,0 +1,23 @@
+<section id="order-status-actions" class="order-status-actions" aria-live="polite">
+  {% if action_success %}<div class="alert alert-success py-2 mb-2" role="status">{{ action_success }}</div>{% endif %}
+  {% for error in action_errors %}<div class="alert alert-danger py-2 mb-2" role="alert">{{ error }}</div>{% endfor %}
+  <div class="d-flex flex-wrap justify-content-end align-items-center gap-2">
+    <span class="badge fs-6 {% if order.status == 'draft' %}text-bg-secondary{% elif order.status == 'reserved' %}text-bg-warning{% elif order.status == 'confirmed' %}text-bg-primary{% elif order.status == 'shipped' %}text-bg-success{% else %}text-bg-dark{% endif %}">{{ order.get_status_display }}</span>
+    {% if can_manage_orders %}
+      {% if order.status == 'draft' %}
+        <a class="btn btn-outline-primary" href="{% url 'orders:order-update' order.id %}">Edit draft</a>
+        <form method="post" action="{% url 'orders:order-reserve' order.id %}" hx-post="{% url 'orders:order-reserve' order.id %}" hx-target="#order-status-actions" hx-swap="outerHTML" hx-disabled-elt="find button">{% csrf_token %}<button class="btn btn-primary" type="submit">Reserve</button></form>
+      {% elif order.status == 'reserved' %}
+        <form method="post" action="{% url 'orders:order-confirm' order.id %}" hx-post="{% url 'orders:order-confirm' order.id %}" hx-target="#order-status-actions" hx-swap="outerHTML" hx-disabled-elt="find button">{% csrf_token %}<button class="btn btn-primary" type="submit">Confirm</button></form>
+        <form method="post" action="{% url 'orders:order-cancel' order.id %}" class="d-flex gap-2" hx-post="{% url 'orders:order-cancel' order.id %}" hx-target="#order-status-actions" hx-swap="outerHTML" hx-disabled-elt="find button">
+          {% csrf_token %}
+          <label class="visually-hidden" for="{{ cancel_form.reason.id_for_label }}">Cancellation reason</label>
+          {{ cancel_form.reason }}
+          <button class="btn btn-outline-danger" type="submit">Cancel</button>
+        </form>
+      {% elif order.status == 'confirmed' %}
+        <form method="post" action="{% url 'orders:order-ship' order.id %}" hx-post="{% url 'orders:order-ship' order.id %}" hx-target="#order-status-actions" hx-swap="outerHTML" hx-disabled-elt="find button">{% csrf_token %}<button class="btn btn-success" type="submit">Ship</button></form>
+      {% endif %}
+    {% endif %}
+  </div>
+</section>
