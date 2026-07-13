@@ -29,7 +29,11 @@ def domain_error_response(exc, status_code=status.HTTP_400_BAD_REQUEST):
 def map_domain_exception(exc):
     if isinstance(exc, StockFlowDomainError):
         status_code = status.HTTP_409_CONFLICT
-        if exc.code in {"INVALID_CANCELLATION_SOURCE", "INVALID_ORDER_ITEM_QUANTITY"}:
+        if exc.code in {
+            "DUPLICATE_ORDER_ITEM",
+            "INVALID_CANCELLATION_SOURCE",
+            "INVALID_ORDER_ITEM_QUANTITY",
+        }:
             status_code = status.HTTP_400_BAD_REQUEST
         return domain_error_response(exc, status_code=status_code)
 

@@ -1,10 +1,8 @@
-from decimal import Decimal
-
-from django.db import transaction
 from rest_framework import serializers
 
 from apps.orders.models import Order, OrderItem
 from apps.products.models import Product, Warehouse
+from apps.orders.services import save_draft_order
 
 
 class OrderItemReadSerializer(serializers.ModelSerializer):
@@ -94,11 +92,7 @@ class OrderWriteSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         items_data = validated_data.pop("items", [])
-        with transaction.atomic():
-            order = Order.objects.create(**validated_data)
-            self._replace_items(order, items_data)
-            self._recalculate_draft_total(order)
-            return order
+        return save_draft_order(updates=validated_data, items=items_data)
 
     def update(self, instance, validated_data):
         if instance.status != Order.Status.DRAFT:
@@ -111,34 +105,11 @@ class OrderWriteSerializer(serializers.ModelSerializer):
             )
 
         items_data = validated_data.pop("items", None)
-        with transaction.atomic():
-            for field, value in validated_data.items():
-                setattr(instance, field, value)
-            instance.save(update_fields=[*validated_data.keys(), "updated_at"])
-
-            if items_data is not None:
-                instance.items.all().delete()
-                self._replace_items(instance, items_data)
-            self._recalculate_draft_total(instance)
-            return instance
-
-    def _replace_items(self, order, items_data):
-        for item_data in items_data:
-            product = item_data["product"]
-            quantity = item_data["quantity"]
-            OrderItem.objects.create(
-                order=order,
-                product=product,
-                warehouse=item_data["warehouse"],
-                quantity=quantity,
-                unit_price=product.unit_price,
-                subtotal=Decimal(quantity) * product.unit_price,
-            )
-
-    def _recalculate_draft_total(self, order):
-        total = sum((item.subtotal for item in order.items.all()), Decimal("0.00"))
-        order.total_amount = total
-        order.save(update_fields=["total_amount", "updated_at"])
+        return save_draft_order(
+            order_id=instance.id,
+            updates=validated_data,
+            items=items_data,
+        )
 
 
 class CancelOrderSerializer(serializers.Serializer):

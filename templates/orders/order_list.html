@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Orders | StockFlow{% endblock %}
+
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div><h1 class="h3 mb-1">Orders</h1><p class="text-body-secondary mb-0">Customer orders and reservation status</p></div>
+    {% if can_manage_orders %}<a class="btn btn-primary" href="{% url 'orders:order-create' %}">Create order</a>{% endif %}
+  </div>
+  <form method="get" class="filter-bar mb-4">
+    {% if filter_form.non_field_errors %}<div class="alert alert-danger">{{ filter_form.non_field_errors }}</div>{% endif %}
+    <div class="row g-3 align-items-end">
+      <div class="col-lg-4"><label class="form-label" for="{{ filter_form.q.id_for_label }}">Search</label>{{ filter_form.q }}</div>
+      <div class="col-lg-2"><label class="form-label" for="{{ filter_form.status.id_for_label }}">Status</label>{{ filter_form.status }}</div>
+      <div class="col-lg-2"><label class="form-label" for="{{ filter_form.created_after.id_for_label }}">Created from</label>{{ filter_form.created_after }}</div>
+      <div class="col-lg-2"><label class="form-label" for="{{ filter_form.created_before.id_for_label }}">Created to</label>{{ filter_form.created_before }}</div>
+      <div class="col-lg-2 d-grid"><button class="btn btn-secondary" type="submit">Filter</button></div>
+    </div>
+  </form>
+  <section class="dashboard-section">
+    <div class="table-responsive"><table class="table table-hover align-middle mb-0">
+      <thead><tr><th>Order</th><th>Customer</th><th>Status</th><th class="text-end">Total</th><th>Created</th></tr></thead>
+      <tbody>
+        {% for order in page_obj %}
+          <tr>
+            <td><a class="fw-semibold text-decoration-none" href="{% url 'orders:order-detail' order.id %}">{{ order.order_number }}</a></td>
+            <td>{{ order.customer_name }}<div class="small text-body-secondary">{{ order.customer_email }}</div></td>
+            <td>
+              {% if order.status == 'draft' %}<span class="badge text-bg-secondary">Draft</span>
+              {% elif order.status == 'reserved' %}<span class="badge text-bg-warning">Reserved</span>
+              {% elif order.status == 'confirmed' %}<span class="badge text-bg-primary">Confirmed</span>
+              {% elif order.status == 'cancelled' %}<span class="badge text-bg-danger">Cancelled</span>
+              {% else %}<span class="badge text-bg-success">Shipped</span>{% endif %}
+            </td>
+            <td class="text-end tabular-numbers">{{ order.total_amount }}</td>
+            <td class="text-nowrap">{{ order.created_at|date:"M j, Y" }}</td>
+          </tr>
+        {% empty %}<tr><td colspan="5" class="empty-state">No orders match these filters.</td></tr>{% endfor %}
+      </tbody>
+    </table></div>
+    {% include "partials/pagination.html" %}
+  </section>
+{% endblock %}

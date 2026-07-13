@@ -8,6 +8,7 @@ from apps.audit.models import AuditLog
 from apps.audit.services import create_audit_log
 from apps.inventory.models import Inventory, StockMovement
 from apps.orders.exceptions import (
+    DuplicateOrderItem,
     InactiveProduct,
     InactiveWarehouse,
     InvalidCancellationSource,
@@ -18,8 +19,106 @@ from apps.orders.exceptions import (
     InventoryNotFound,
 )
 from apps.orders.models import Order, OrderItem
+from apps.products.models import Product, Warehouse
 
 SUPPORTED_CANCELLATION_SOURCES = {"manual", "expiration"}
+
+
+def save_draft_order(
+    *,
+    updates: dict,
+    items: list[dict] | None,
+    order_id: int | None = None,
+) -> Order:
+    with transaction.atomic():
+        if order_id is None:
+            order = Order(status=Order.Status.DRAFT)
+        else:
+            order = Order.objects.select_for_update().get(id=order_id)
+            if order.status != Order.Status.DRAFT:
+                raise InvalidOrderTransition(
+                    details=[
+                        {
+                            "order_id": order.id,
+                            "current_status": order.status,
+                            "required_status": Order.Status.DRAFT,
+                        }
+                    ]
+                )
+
+        for field in {"order_number", "customer_name", "customer_email"}:
+            if field in updates:
+                setattr(order, field, updates[field])
+        order.full_clean()
+        order.save()
+
+        if items is not None:
+            normalized_items = _normalize_draft_items(items)
+            order.items.all().delete()
+            OrderItem.objects.bulk_create(
+                [
+                    OrderItem(
+                        order=order,
+                        product=item["product"],
+                        warehouse=item["warehouse"],
+                        quantity=item["quantity"],
+                        unit_price=item["product"].unit_price,
+                        subtotal=Decimal(item["quantity"])
+                        * item["product"].unit_price,
+                    )
+                    for item in normalized_items
+                ]
+            )
+
+        total = sum(
+            order.items.values_list("subtotal", flat=True),
+            Decimal("0.00"),
+        )
+        order.total_amount = total
+        order.save(update_fields=["total_amount", "updated_at"])
+        return order
+
+
+def _normalize_draft_items(items: list[dict]) -> list[dict]:
+    product_ids = [item["product"].id for item in items]
+    warehouse_ids = [item["warehouse"].id for item in items]
+    products = Product.objects.in_bulk(product_ids)
+    warehouses = Warehouse.objects.in_bulk(warehouse_ids)
+    normalized = []
+    seen = set()
+    duplicates = []
+
+    for item in items:
+        product_id = item["product"].id
+        warehouse_id = item["warehouse"].id
+        quantity = item["quantity"]
+        key = (product_id, warehouse_id)
+        if key in seen:
+            duplicates.append(
+                {"product_id": product_id, "warehouse_id": warehouse_id}
+            )
+        seen.add(key)
+        if quantity <= 0:
+            raise InvalidOrderItemQuantity(
+                details=[
+                    {
+                        "product_id": product_id,
+                        "warehouse_id": warehouse_id,
+                        "quantity": quantity,
+                    }
+                ]
+            )
+        normalized.append(
+            {
+                "product": products[product_id],
+                "warehouse": warehouses[warehouse_id],
+                "quantity": quantity,
+            }
+        )
+
+    if duplicates:
+        raise DuplicateOrderItem(details=duplicates)
+    return normalized
 
 
 def reserve_order(order_id: int, performed_by, correlation_id: str = "") -> Order:

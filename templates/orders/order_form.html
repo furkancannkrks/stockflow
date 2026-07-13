@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }} | StockFlow{% endblock %}
+
+{% block content %}
+  <div class="mb-4"><a class="small text-decoration-none" href="{% if order.id %}{% url 'orders:order-detail' order.id %}{% else %}{% url 'orders:order-list' %}{% endif %}">Orders</a><h1 class="h3 mt-2 mb-0">{{ page_title }}</h1></div>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    <section class="form-panel mb-4">
+      <h2 class="h5 mb-3">Order information</h2>
+      {% include "partials/form_fields.html" %}
+    </section>
+    <section class="dashboard-section mb-4">
+      <div class="section-heading d-flex justify-content-between align-items-center"><h2 class="h5 mb-0">Order items</h2><button class="btn btn-sm btn-outline-primary" id="add-order-item" type="button">Add item</button></div>
+      {{ formset.management_form }}
+      {% if formset.non_form_errors %}<div class="alert alert-danger m-3">{{ formset.non_form_errors }}</div>{% endif %}
+      <div id="order-items">
+        {% for item_form in formset.forms %}
+          <div class="order-item-row" data-order-item>
+            {% for hidden in item_form.hidden_fields %}{{ hidden }}{% endfor %}
+            <div><label class="form-label" for="{{ item_form.product.id_for_label }}">Product</label>{{ item_form.product }}{% for error in item_form.product.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>
+            <div><label class="form-label" for="{{ item_form.warehouse.id_for_label }}">Warehouse</label>{{ item_form.warehouse }}{% for error in item_form.warehouse.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>
+            <div><label class="form-label" for="{{ item_form.quantity.id_for_label }}">Quantity</label>{{ item_form.quantity }}{% for error in item_form.quantity.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>
+            <div class="d-flex align-items-end">{% if item_form.DELETE %}<div class="form-check mb-2">{{ item_form.DELETE }}<label class="form-check-label" for="{{ item_form.DELETE.id_for_label }}">Remove</label></div>{% endif %}</div>
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+    <div class="d-flex gap-2"><button class="btn btn-primary" type="submit">{{ submit_label }}</button><a class="btn btn-outline-secondary" href="{% if order.id %}{% url 'orders:order-detail' order.id %}{% else %}{% url 'orders:order-list' %}{% endif %}">Cancel</a></div>
+  </form>
+
+  <template id="empty-order-item">
+    <div class="order-item-row" data-order-item>
+      {% with item_form=formset.empty_form %}
+        {% for hidden in item_form.hidden_fields %}{{ hidden }}{% endfor %}
+        <div><label class="form-label" for="{{ item_form.product.id_for_label }}">Product</label>{{ item_form.product }}</div>
+        <div><label class="form-label" for="{{ item_form.warehouse.id_for_label }}">Warehouse</label>{{ item_form.warehouse }}</div>
+        <div><label class="form-label" for="{{ item_form.quantity.id_for_label }}">Quantity</label>{{ item_form.quantity }}</div>
+        <div class="d-flex align-items-end"><button class="btn btn-sm btn-outline-danger mb-1" type="button" data-remove-item>Remove</button></div>
+      {% endwith %}
+    </div>
+  </template>
+{% endblock %}
+
+{% block scripts %}
+  <script>
+    (() => {
+      const container = document.querySelector("#order-items");
+      const totalForms = document.querySelector("#id_items-TOTAL_FORMS");
+      const template = document.querySelector("#empty-order-item");
+      const addButton = document.querySelector("#add-order-item");
+      if (!container || !totalForms || !template || !addButton) return;
+
+      addButton.addEventListener("click", () => {
+        const index = Number(totalForms.value);
+        const markup = template.innerHTML.replaceAll("__prefix__", String(index));
+        container.insertAdjacentHTML("beforeend", markup);
+        totalForms.value = String(index + 1);
+      });
+
+      container.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-remove-item]");
+        if (button) button.closest("[data-order-item]").remove();
+      });
+    })();
+  </script>
+{% endblock %}

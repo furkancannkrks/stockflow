@@ -46,3 +46,8 @@ class InvalidCancellationSource(StockFlowDomainError):
 class InvalidInventoryState(StockFlowDomainError):
     code = "INVALID_INVENTORY_STATE"
     default_message = "Inventory quantities are not valid for this order transition."
+
+
+class DuplicateOrderItem(StockFlowDomainError):
+    code = "DUPLICATE_ORDER_ITEM"
+    default_message = "The same product and warehouse cannot appear twice in one order."
