@@ -68,6 +68,17 @@ def test_custom_actions_document_requests_responses_and_status_codes(client):
         == "#/components/schemas/Inventory"
     )
 
+    movements = paths["/api/inventory/{id}/movements/"]["get"]
+    assert set(movements["responses"]) >= {"200", "401", "403", "404"}
+    assert (
+        movements["responses"]["200"]["content"]["application/json"]["schema"]["$ref"]
+        == "#/components/schemas/PaginatedStockMovementList"
+    )
+    movement_parameters = {
+        parameter["name"]: parameter for parameter in movements["parameters"]
+    }
+    assert set(movement_parameters) == {"id", "page", "page_size"}
+
 
 def test_required_examples_and_csv_media_type_are_documented(client):
     paths = get_schema(client)["paths"]

@@ -196,7 +196,84 @@ def test_inventory_list_detail_adjustment_and_movements(client):
 
     movements_response = client.get(f"/api/inventory/{inventory.id}/movements/")
     assert movements_response.status_code == 200
-    assert movements_response.data[0]["movement_type"] == StockMovement.MovementType.STOCK_IN
+    assert movements_response.data["count"] == 1
+    assert (
+        movements_response.data["results"][0]["movement_type"]
+        == StockMovement.MovementType.STOCK_IN
+    )
+
+
+def test_inventory_movements_are_paginated_bounded_and_inventory_scoped(
+    client,
+    django_assert_num_queries,
+):
+    product = create_product()
+    second_product = create_product(sku="SKU-2")
+    warehouse = create_warehouse()
+    inventory = Inventory.objects.create(
+        product=product,
+        warehouse=warehouse,
+        quantity=200,
+    )
+    other_inventory = Inventory.objects.create(
+        product=second_product,
+        warehouse=warehouse,
+        quantity=10,
+    )
+    StockMovement.objects.bulk_create(
+        [
+            StockMovement(
+                inventory=inventory,
+                movement_type=StockMovement.MovementType.STOCK_IN,
+                quantity=1,
+                description=f"Movement {index}",
+                created_by=client.user,
+            )
+            for index in range(105)
+        ]
+    )
+    StockMovement.objects.bulk_create(
+        [
+            StockMovement(
+                inventory=other_inventory,
+                movement_type=StockMovement.MovementType.STOCK_IN,
+                quantity=1,
+                description=f"Other movement {index}",
+                created_by=client.user,
+            )
+            for index in range(3)
+        ]
+    )
+
+    with django_assert_num_queries(3):
+        first_page = client.get(
+            f"/api/inventory/{inventory.id}/movements/",
+            {"page_size": 500},
+        )
+
+    second_page = client.get(
+        f"/api/inventory/{inventory.id}/movements/",
+        {"page_size": 100, "page": 2},
+    )
+
+    assert first_page.status_code == 200
+    assert set(first_page.data) == {"count", "next", "previous", "results"}
+    assert first_page.data["count"] == 105
+    assert len(first_page.data["results"]) == 100
+    assert first_page.data["next"] is not None
+    assert first_page.data["previous"] is None
+    assert {
+        movement["inventory"] for movement in first_page.data["results"]
+    } == {inventory.id}
+
+    assert second_page.status_code == 200
+    assert second_page.data["count"] == 105
+    assert len(second_page.data["results"]) == 5
+    assert second_page.data["next"] is None
+    assert second_page.data["previous"] is not None
+    assert {
+        movement["inventory"] for movement in second_page.data["results"]
+    } == {inventory.id}
 
 
 def test_order_create_ignores_price_total_status_and_validates_duplicates(client):

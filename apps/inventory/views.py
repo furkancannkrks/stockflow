@@ -30,6 +30,10 @@ PERMISSION_DENIED_RESPONSE = detail_response(
     "Permission denied",
     "You do not have permission to perform this action.",
 )
+INVENTORY_NOT_FOUND_RESPONSE = detail_response(
+    "Inventory not found",
+    "Not found.",
+)
 
 
 class InventoryViewSet(viewsets.ReadOnlyModelViewSet):
@@ -97,9 +101,29 @@ class InventoryViewSet(viewsets.ReadOnlyModelViewSet):
             status=status.HTTP_200_OK,
         )
 
+    @extend_schema(
+        summary="List inventory stock movements",
+        description=(
+            "Return the paginated stock movement history for one inventory "
+            "record, ordered from newest to oldest."
+        ),
+        responses={
+            200: StockMovementSerializer(many=True),
+            401: AUTHENTICATION_REQUIRED_RESPONSE,
+            403: PERMISSION_DENIED_RESPONSE,
+            404: INVENTORY_NOT_FOUND_RESPONSE,
+        },
+        filters=False,
+        tags=["Inventory"],
+    )
     @action(detail=True, methods=["get"], url_path="movements")
     def movements(self, request, pk=None):
         inventory = self.get_object()
         movements = inventory.stock_movements.select_related("created_by").all()
-        serializer = StockMovementSerializer(movements, many=True)
-        return Response(serializer.data)
+        page = self.paginate_queryset(movements)
+        serializer = StockMovementSerializer(
+            page,
+            many=True,
+            context=self.get_serializer_context(),
+        )
+        return self.get_paginated_response(serializer.data)
