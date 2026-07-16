@@ -1,5 +1,6 @@
 """Root URL configuration for StockFlow."""
 from django.contrib import admin
+from django.db import DatabaseError, connection
 from django.http import JsonResponse
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
@@ -12,7 +13,16 @@ from apps.reports.browser_views import (
 
 
 def health_check(request):
-    return JsonResponse({"status": "ok"})
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+            cursor.fetchone()
+    except DatabaseError:
+        return JsonResponse(
+            {"status": "unavailable", "database": "unavailable"},
+            status=503,
+        )
+    return JsonResponse({"status": "ok", "database": "ok"})
 
 
 urlpatterns = [

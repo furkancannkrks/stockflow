@@ -6,6 +6,7 @@ x-app: &stockflow-app
     context: .
     dockerfile: Dockerfile
   environment:
+    DJANGO_SETTINGS_MODULE: config.settings
     DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-django-insecure-docker-development-key-change-me}
     DJANGO_DEBUG: ${DJANGO_DEBUG:-True}
     DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,0.0.0.0}
@@ -64,7 +65,7 @@ services:
           "CMD",
           "python",
           "-c",
-          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/', timeout=2)",
+          "import urllib.request; request=urllib.request.Request('http://localhost:8000/health/', headers={'X-Forwarded-Proto': 'https'}); urllib.request.urlopen(request, timeout=2)",
         ]
       interval: 10s
       timeout: 5s

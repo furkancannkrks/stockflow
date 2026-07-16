@@ -1,4 +1,4 @@
-"""Django settings for StockFlow."""
+"""Development settings for StockFlow."""
 import os
 from pathlib import Path
 
@@ -26,7 +26,13 @@ def env_bool(name: str, default: bool = False) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
-load_local_env()
+if os.getenv("DJANGO_LOAD_DOTENV", "true").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}:
+    load_local_env()
 
 SECRET_KEY = os.getenv(
     "DJANGO_SECRET_KEY",

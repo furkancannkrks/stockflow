@@ -1,0 +1,40 @@
+x-production-environment: &production-environment
+  DJANGO_SETTINGS_MODULE: config.settings_production
+  DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?DJANGO_SECRET_KEY is required}
+  DJANGO_DEBUG: "False"
+  DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:?DJANGO_ALLOWED_HOSTS is required}
+  DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:-}
+  DJANGO_SECURE_SSL_REDIRECT: ${DJANGO_SECURE_SSL_REDIRECT:-True}
+  DJANGO_SESSION_COOKIE_SECURE: ${DJANGO_SESSION_COOKIE_SECURE:-True}
+  DJANGO_CSRF_COOKIE_SECURE: ${DJANGO_CSRF_COOKIE_SECURE:-True}
+  DJANGO_SECURE_HSTS_SECONDS: ${DJANGO_SECURE_HSTS_SECONDS:-31536000}
+  DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS: ${DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS:-True}
+  DJANGO_SECURE_HSTS_PRELOAD: ${DJANGO_SECURE_HSTS_PRELOAD:-False}
+  DJANGO_TRUST_PROXY_HEADERS: ${DJANGO_TRUST_PROXY_HEADERS:-True}
+  DB_NAME: ${DB_NAME:?DB_NAME is required}
+  DB_USER: ${DB_USER:?DB_USER is required}
+  DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+  DB_HOST: db
+  DB_PORT: "5432"
+  DB_CONN_MAX_AGE: ${DB_CONN_MAX_AGE:-60}
+  STOCKFLOW_DEMO_MANAGER_PASSWORD: ""
+  STOCKFLOW_DEMO_STAFF_PASSWORD: ""
+
+services:
+  web:
+    environment:
+      <<: *production-environment
+    command:
+      [
+        "sh",
+        "-c",
+        "python manage.py collectstatic --noinput && exec gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers ${GUNICORN_WORKERS:-3} --timeout ${GUNICORN_TIMEOUT:-60} --access-logfile - --error-logfile -",
+      ]
+
+  celery_worker:
+    environment:
+      <<: *production-environment
+
+  celery_beat:
+    environment:
+      <<: *production-environment
