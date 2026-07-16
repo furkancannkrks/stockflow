@@ -168,6 +168,16 @@ REST_FRAMEWORK = {
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "StockFlow API",
-    "DESCRIPTION": "Inventory and order reservation management API.",
+    "DESCRIPTION": (
+        "Inventory and order reservation management API. API requests require "
+        "HTTP Basic authentication or an authenticated Django session cookie. "
+        "Manager and warehouse_staff roles have different write permissions; "
+        "see each operation's 403 response."
+    ),
     "VERSION": "1.0.0",
+    "COMPONENT_SPLIT_REQUEST": True,
+    "SERVE_INCLUDE_SCHEMA": False,
+    "SWAGGER_UI_SETTINGS": {
+        "persistAuthorization": True,
+    },
 }

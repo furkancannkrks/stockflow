@@ -3,10 +3,11 @@ import csv
 from django.http import StreamingHttpResponse
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework.views import APIView
 
 from apps.inventory.selectors import low_stock_inventory
+from apps.schema import CSV_EXPORT_EXAMPLE, detail_response
 from apps.users.permissions import ManagerOnlyPermission
 
 
@@ -62,9 +63,25 @@ class LowStockCSVView(APIView):
         operation_id="export_low_stock_csv",
         description=(
             "Export product-warehouse inventory rows whose available quantity "
-            "is less than or equal to the product low-stock threshold."
+            "is less than or equal to the product low-stock threshold. The "
+            "response is streamed and includes a timestamped attachment filename."
         ),
-        responses={(200, "text/csv"): OpenApiTypes.BINARY},
+        responses={
+            (200, "text/csv"): OpenApiResponse(
+                response=OpenApiTypes.BINARY,
+                description="Low-stock inventory CSV attachment.",
+                examples=[CSV_EXPORT_EXAMPLE],
+            ),
+            401: detail_response(
+                "Authentication required",
+                "Authentication credentials were not provided.",
+            ),
+            403: detail_response(
+                "Manager role required",
+                "You do not have permission to perform this action.",
+            ),
+        },
+        tags=["Reports"],
     )
     def get(self, request):
         generated_at = timezone.now()

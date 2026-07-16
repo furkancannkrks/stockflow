@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -12,7 +13,23 @@ from apps.inventory.serializers import (
 )
 from apps.inventory.services import adjust_inventory
 from apps.inventory.selectors import inventory_with_available_quantity
+from apps.schema import (
+    INVENTORY_ADJUSTMENT_REQUEST_EXAMPLE,
+    INVENTORY_ADJUSTMENT_RESPONSE_EXAMPLE,
+    api_error_response,
+    detail_response,
+)
 from apps.users.permissions import InventoryPermission
+
+
+AUTHENTICATION_REQUIRED_RESPONSE = detail_response(
+    "Authentication required",
+    "Authentication credentials were not provided.",
+)
+PERMISSION_DENIED_RESPONSE = detail_response(
+    "Permission denied",
+    "You do not have permission to perform this action.",
+)
 
 
 class InventoryViewSet(viewsets.ReadOnlyModelViewSet):
@@ -35,6 +52,30 @@ class InventoryViewSet(viewsets.ReadOnlyModelViewSet):
     ]
     ordering = ["product__sku", "warehouse__code"]
 
+    @extend_schema(
+        summary="Adjust inventory",
+        description=(
+            "Apply stock_in, stock_out, or manual_adjustment through the atomic "
+            "inventory adjustment service. Reserved stock remains protected."
+        ),
+        request=InventoryAdjustmentSerializer,
+        responses={
+            200: InventorySerializer,
+            400: api_error_response(
+                "Serializer validation or inventory domain error.",
+            ),
+            401: AUTHENTICATION_REQUIRED_RESPONSE,
+            403: PERMISSION_DENIED_RESPONSE,
+            404: api_error_response(
+                "No inventory record exists for the product and warehouse.",
+            ),
+        },
+        examples=[
+            INVENTORY_ADJUSTMENT_REQUEST_EXAMPLE,
+            INVENTORY_ADJUSTMENT_RESPONSE_EXAMPLE,
+        ],
+        tags=["Inventory"],
+    )
     @action(detail=False, methods=["post"], url_path="adjustments")
     def adjustments(self, request):
         serializer = InventoryAdjustmentSerializer(data=request.data)
