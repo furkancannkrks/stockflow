@@ -47,3 +47,28 @@ py -3 manage.py migrate
 `CELERY_BROKER_URL` and `CELERY_RESULT_BACKEND` are present now as configuration
 placeholders. Later Celery prompts will use Redis at those URLs for background
 jobs and result storage.
+
+## Demo Data
+
+Create or refresh the deterministic demonstration dataset with:
+
+```bash
+py -3 manage.py seed_data
+```
+
+The command is safe to run repeatedly. It creates deterministic products,
+warehouses, inventory, order scenarios, stock movements, and audit records.
+
+Demo usernames:
+
+- `demo_manager` with the `manager` role
+- `demo_warehouse_staff` with the `warehouse_staff` role
+
+No password is stored in the repository. New demo users receive unusable
+passwords unless these optional environment variables are set before running
+the command:
+
+- `STOCKFLOW_DEMO_MANAGER_PASSWORD`
+- `STOCKFLOW_DEMO_STAFF_PASSWORD`
+
+The command never prints the configured password values.
