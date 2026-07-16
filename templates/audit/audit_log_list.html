@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load audit_display %}
 
 {% block title %}Audit Logs | StockFlow{% endblock %}
 
@@ -15,7 +16,16 @@
               <td>{{ audit_log.get_action_display }}</td>
               <td>{{ audit_log.actor|default:"System" }}</td>
               <td><span class="fw-semibold">{{ audit_log.target_repr }}</span><div class="small text-body-secondary">{{ audit_log.target_model }}:{{ audit_log.target_object_id }}</div></td>
-              <td><code class="small text-break">{{ audit_log.metadata|default:"—"|truncatechars:140 }}</code></td>
+              <td class="audit-metadata">
+                {% if audit_log.metadata %}
+                  <details>
+                    <summary class="small text-body-secondary">View metadata</summary>
+                    <pre class="small bg-body-tertiary border rounded p-2 mt-2 mb-0 text-break" style="white-space: pre-wrap;">{{ audit_log.metadata|pretty_json }}</pre>
+                  </details>
+                {% else %}
+                  <span class="text-body-secondary" data-metadata-empty="true">-</span>
+                {% endif %}
+              </td>
               <td class="small text-break">{{ audit_log.correlation_id|default:"—" }}</td>
             </tr>
           {% empty %}

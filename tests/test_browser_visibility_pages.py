@@ -1,7 +1,9 @@
 from decimal import Decimal
+import json
 
 import pytest
 from django.test import Client
+from django.utils.html import escape
 
 from apps.audit.models import AuditLog
 from apps.inventory.models import Inventory, StockMovement
@@ -131,6 +133,85 @@ def test_audit_log_page_is_read_only_and_paginated(client):
     assert len(first_page.context["page_obj"]) == 25
     assert len(second_page.context["page_obj"]) == 2
     assert post_response.status_code == 405
+
+
+def test_audit_log_page_displays_empty_metadata_as_dash(client):
+    manager = create_user("audit-empty-metadata-manager")
+    AuditLog.objects.create(
+        actor=manager,
+        action=AuditLog.Action.PRODUCT_UPDATED,
+        target_model="products.product",
+        target_object_id="1",
+        target_repr="Empty metadata product",
+        metadata={},
+    )
+    client.force_login(manager)
+
+    response = client.get("/audit-logs/")
+
+    assert response.status_code == 200
+    assert b'data-metadata-empty="true">-</span>' in response.content
+    assert b"View metadata" not in response.content
+
+
+def test_audit_log_page_pretty_prints_nested_metadata(client):
+    manager = create_user("audit-nested-metadata-manager")
+    metadata = {
+        "items": [
+            {
+                "product": {"sku": "NESTED-1"},
+                "quantity": {"before": 2, "after": 5},
+            }
+        ],
+        "source": "manual",
+    }
+    AuditLog.objects.create(
+        actor=manager,
+        action=AuditLog.Action.INVENTORY_ADJUSTED,
+        target_model="inventory.inventory",
+        target_object_id="1",
+        target_repr="Nested metadata inventory",
+        metadata=metadata,
+    )
+    client.force_login(manager)
+
+    response = client.get("/audit-logs/")
+    expected_json = escape(
+        json.dumps(metadata, indent=2, sort_keys=True, ensure_ascii=False)
+    )
+
+    assert response.status_code == 200
+    assert b"<details>" in response.content
+    assert b"View metadata" in response.content
+    assert str(expected_json) in response.content.decode()
+
+
+def test_audit_log_metadata_escapes_html_and_script_content(client):
+    manager = create_user("audit-escaped-metadata-manager")
+    metadata = {
+        "html": '<img src="x" onerror="alert(1)">',
+        "script": "<script>alert('xss')</script>",
+    }
+    AuditLog.objects.create(
+        actor=manager,
+        action=AuditLog.Action.PRODUCT_UPDATED,
+        target_model="products.product",
+        target_object_id="1",
+        target_repr="Escaped metadata product",
+        metadata=metadata,
+    )
+    client.force_login(manager)
+
+    response = client.get("/audit-logs/")
+    escaped_json = escape(
+        json.dumps(metadata, indent=2, sort_keys=True, ensure_ascii=False)
+    )
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert "<script>" not in content
+    assert "<img src=" not in content
+    assert str(escaped_json) in content
 
 
 def test_warehouse_pages_allow_shared_read_but_manager_only_mutation(client):
