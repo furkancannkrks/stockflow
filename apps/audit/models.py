@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.db.models import Q
 
 
 class AuditLog(models.Model):
@@ -36,6 +37,20 @@ class AuditLog(models.Model):
             ),
             models.Index(fields=["correlation_id"], name="audit_correlation_idx"),
             models.Index(fields=["created_at"], name="audit_created_at_idx"),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(
+                    action__in=[
+                        "product_updated",
+                        "inventory_adjusted",
+                        "order_reserved",
+                        "order_cancelled",
+                        "order_confirmed",
+                    ]
+                ),
+                name="audit_action_valid",
+            ),
         ]
 
     def __str__(self) -> str:

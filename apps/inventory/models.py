@@ -96,6 +96,19 @@ class StockMovement(models.Model):
                 condition=Q(quantity__gt=0),
                 name="stock_movement_quantity_positive",
             ),
+            models.CheckConstraint(
+                condition=Q(
+                    movement_type__in=[
+                        "adjustment",
+                        "stock_in",
+                        "reservation",
+                        "reservation_release",
+                        "stock_out",
+                        "manual_adjustment",
+                    ]
+                ),
+                name="stock_movement_type_valid",
+            ),
         ]
 
     def __str__(self) -> str:

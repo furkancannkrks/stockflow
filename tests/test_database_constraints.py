@@ -3,9 +3,11 @@ from decimal import Decimal
 import pytest
 from django.db import IntegrityError, transaction
 
-from apps.inventory.models import Inventory
-from apps.orders.models import Order, OrderItem
+from apps.audit.models import AuditLog
+from apps.inventory.models import Inventory, StockMovement
+from apps.orders.models import IdempotencyRecord, Order, OrderItem
 from apps.products.models import Product, Warehouse
+from apps.users.models import User
 
 
 pytestmark = pytest.mark.django_db
@@ -33,6 +35,13 @@ def create_order(order_number="ORD-1"):
         order_number=order_number,
         customer_name="Constraint Customer",
         customer_email="constraints@example.com",
+    )
+
+
+def create_user(username="constraint-user"):
+    return User.objects.create_user(
+        username=username,
+        password="test-password",
     )
 
 
@@ -113,4 +122,51 @@ def test_order_item_product_warehouse_pair_is_unique_within_order():
             quantity=2,
             unit_price=product.unit_price,
             subtotal=product.unit_price * 2,
+        )
+
+
+def test_order_status_database_constraint_rejects_invalid_value():
+    with pytest.raises(IntegrityError), transaction.atomic():
+        Order.objects.create(
+            order_number="ORD-INVALID-STATUS",
+            customer_name="Constraint Customer",
+            customer_email="constraints@example.com",
+            status="invalid",
+        )
+
+
+def test_stock_movement_type_database_constraint_rejects_invalid_value():
+    inventory = Inventory.objects.create(
+        product=create_product("MOVEMENT-CONSTRAINT"),
+        warehouse=create_warehouse("MOVEMENT-WH"),
+        quantity=10,
+    )
+
+    with pytest.raises(IntegrityError), transaction.atomic():
+        StockMovement.objects.create(
+            inventory=inventory,
+            movement_type="invalid",
+            quantity=1,
+        )
+
+
+def test_idempotency_status_database_constraint_rejects_invalid_value():
+    with pytest.raises(IntegrityError), transaction.atomic():
+        IdempotencyRecord.objects.create(
+            actor=create_user(),
+            key="invalid-status-key",
+            operation="reserve_order",
+            order=create_order("ORD-IDEMPOTENCY-STATUS"),
+            request_fingerprint="a" * 64,
+            status="invalid",
+        )
+
+
+def test_audit_action_database_constraint_rejects_invalid_value():
+    with pytest.raises(IntegrityError), transaction.atomic():
+        AuditLog.objects.create(
+            action="invalid",
+            target_model="orders.order",
+            target_object_id="1",
+            target_repr="ORD-INVALID-AUDIT-ACTION",
         )

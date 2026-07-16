@@ -46,6 +46,18 @@ class Order(models.Model):
                 condition=Q(total_amount__gte=0),
                 name="order_total_amount_nonnegative",
             ),
+            models.CheckConstraint(
+                condition=Q(
+                    status__in=[
+                        "draft",
+                        "reserved",
+                        "confirmed",
+                        "cancelled",
+                        "shipped",
+                    ]
+                ),
+                name="order_status_valid",
+            ),
         ]
 
     def __str__(self) -> str:
@@ -152,6 +164,10 @@ class IdempotencyRecord(models.Model):
             models.UniqueConstraint(
                 fields=["actor", "operation", "key"],
                 name="unique_idempotency_actor_operation_key",
+            ),
+            models.CheckConstraint(
+                condition=Q(status__in=["in_progress", "completed", "failed"]),
+                name="idempotency_status_valid",
             ),
         ]
 
