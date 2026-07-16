@@ -19,8 +19,17 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("", include("apps.users.urls")),
     path("products/", include("apps.products.browser_urls", namespace="products")),
+    path(
+        "warehouses/",
+        include("apps.products.warehouse_urls", namespace="warehouses"),
+    ),
     path("inventory/", include("apps.inventory.browser_urls", namespace="inventory")),
+    path(
+        "stock-movements/",
+        include("apps.inventory.movement_urls", namespace="stock-movements"),
+    ),
     path("orders/", include("apps.orders.browser_urls", namespace="orders")),
+    path("audit-logs/", include("apps.audit.browser_urls", namespace="audit-logs")),
     path("api/", include("apps.urls")),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),

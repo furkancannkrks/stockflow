@@ -4,7 +4,8 @@ from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, redirect
 from django.views.generic import FormView, TemplateView
 
-from apps.products.forms import ProductForm, ProductListFilterForm
+from apps.products.forms import ProductForm, ProductListFilterForm, WarehouseForm
+from apps.products.models import Warehouse
 from apps.products.selectors import (
     filter_products_by_low_stock,
     filter_products_by_warehouse,
@@ -12,12 +13,14 @@ from apps.products.selectors import (
     product_list_queryset,
     recent_movements_for_product,
     search_products,
+    warehouse_list_queryset,
 )
 from apps.products.services import update_product
 from apps.users.permissions import ManagerRequiredMixin, StockFlowUserRequiredMixin
 
 
 PRODUCTS_PER_PAGE = 20
+WAREHOUSES_PER_PAGE = 25
 
 
 class ProductListView(StockFlowUserRequiredMixin, TemplateView):
@@ -126,6 +129,82 @@ class ProductUpdateView(ManagerRequiredMixin, FormView):
                 "page_title": "Update product",
                 "submit_label": "Save changes",
                 "product": self.get_product(),
+            }
+        )
+        return context
+
+
+class WarehouseListView(StockFlowUserRequiredMixin, TemplateView):
+    template_name = "warehouses/warehouse_list.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        paginator = Paginator(warehouse_list_queryset(), WAREHOUSES_PER_PAGE)
+        context["page_obj"] = paginator.get_page(self.request.GET.get("page"))
+        return context
+
+
+class WarehouseDetailView(StockFlowUserRequiredMixin, TemplateView):
+    template_name = "warehouses/warehouse_detail.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["warehouse"] = get_object_or_404(
+            warehouse_list_queryset(),
+            pk=kwargs["pk"],
+        )
+        return context
+
+
+class WarehouseCreateView(ManagerRequiredMixin, FormView):
+    template_name = "warehouses/warehouse_form.html"
+    form_class = WarehouseForm
+
+    def form_valid(self, form):
+        warehouse = form.save()
+        messages.success(self.request, f"Warehouse {warehouse.code} was created.")
+        return redirect("warehouses:warehouse-detail", pk=warehouse.id)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update(
+            {
+                "page_title": "Create warehouse",
+                "submit_label": "Create warehouse",
+            }
+        )
+        return context
+
+
+class WarehouseUpdateView(ManagerRequiredMixin, FormView):
+    template_name = "warehouses/warehouse_form.html"
+    form_class = WarehouseForm
+
+    def get_warehouse(self):
+        if not hasattr(self, "warehouse"):
+            self.warehouse = get_object_or_404(
+                Warehouse.objects.all(),
+                pk=self.kwargs["pk"],
+            )
+        return self.warehouse
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["instance"] = self.get_warehouse()
+        return kwargs
+
+    def form_valid(self, form):
+        warehouse = form.save()
+        messages.success(self.request, f"Warehouse {warehouse.code} was updated.")
+        return redirect("warehouses:warehouse-detail", pk=warehouse.id)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update(
+            {
+                "page_title": "Update warehouse",
+                "submit_label": "Save changes",
+                "warehouse": self.get_warehouse(),
             }
         )
         return context

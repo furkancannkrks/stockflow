@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}{{ warehouse.code }} | StockFlow{% endblock %}
+
+{% block content %}
+  <div class="d-flex justify-content-between align-items-start mb-4">
+    <div><a class="small text-decoration-none" href="{% url 'warehouses:warehouse-list' %}">Warehouses</a><h1 class="h3 mt-2 mb-1">{{ warehouse.name }}</h1><p class="text-body-secondary mb-0">{{ warehouse.code }}</p></div>
+    {% if can_manage_catalog %}<a class="btn btn-primary" href="{% url 'warehouses:warehouse-update' warehouse.id %}">Edit warehouse</a>{% endif %}
+  </div>
+  <section class="detail-panel">
+    <div class="row g-4">
+      <div class="col-md-3"><div class="detail-label">Code</div><div>{{ warehouse.code }}</div></div>
+      <div class="col-md-3"><div class="detail-label">Status</div><div>{% if warehouse.is_active %}Active{% else %}Inactive{% endif %}</div></div>
+      <div class="col-md-3"><div class="detail-label">Inventory records</div><div>{{ warehouse.inventory_count }}</div></div>
+      <div class="col-md-3"><div class="detail-label">Updated</div><div>{{ warehouse.updated_at|date:"M j, Y H:i" }}</div></div>
+      <div class="col-12"><div class="detail-label">Address</div><div class="text-break">{{ warehouse.address|default:"—"|linebreaksbr }}</div></div>
+    </div>
+  </section>
+{% endblock %}

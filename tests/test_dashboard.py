@@ -135,6 +135,7 @@ def test_dashboard_renders_base_navigation_and_sections(client):
         "Warehouses",
         "Stock Movements",
         "Reports",
+        "Audit Logs",
         "Logout",
         "Recent stock movements",
         "Low-stock products",
@@ -148,7 +149,7 @@ def test_dashboard_renders_base_navigation_and_sections(client):
     assert 'hx-trigger="every 120s"' in content
 
 
-def test_warehouse_staff_dashboard_disables_report_export(client):
+def test_warehouse_staff_dashboard_hides_manager_only_navigation(client):
     user = create_user("dashboard-staff", User.Role.WAREHOUSE_STAFF)
     client.force_login(user)
 
@@ -156,9 +157,11 @@ def test_warehouse_staff_dashboard_disables_report_export(client):
     content = response.content.decode("utf-8")
 
     assert response.status_code == 200
-    assert "Reports" in content
+    assert "Reports" not in content
+    assert "Audit Logs" not in content
     assert "/api/reports/low-stock.csv" not in content
     assert response.context["can_export_reports"] is False
+    assert response.context["can_view_audit_logs"] is False
 
 
 def test_dashboard_query_count_does_not_grow_with_list_rows(

@@ -52,3 +52,11 @@ def recent_movements_for_inventory(inventory_id, limit=20):
     return StockMovement.objects.filter(inventory_id=inventory_id).select_related(
         "created_by"
     )[:limit]
+
+
+def stock_movement_list_queryset():
+    return StockMovement.objects.select_related(
+        "inventory__product",
+        "inventory__warehouse",
+        "created_by",
+    ).order_by("-created_at", "-id")

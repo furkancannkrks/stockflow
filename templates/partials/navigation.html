@@ -10,12 +10,13 @@
         <li class="nav-item"><a class="nav-link{% if request.resolver_match.namespace == 'products' %} active{% endif %}" href="{% url 'products:product-list' %}">Products</a></li>
         <li class="nav-item"><a class="nav-link{% if request.resolver_match.namespace == 'inventory' %} active{% endif %}" href="{% url 'inventory:inventory-list' %}">Inventory</a></li>
         <li class="nav-item"><a class="nav-link{% if request.resolver_match.namespace == 'orders' %} active{% endif %}" href="{% url 'orders:order-list' %}">Orders</a></li>
-        <li class="nav-item"><a class="nav-link" href="{% url 'dashboard' %}#summary">Warehouses</a></li>
-        <li class="nav-item"><a class="nav-link" href="{% url 'dashboard' %}#recent-stock-movements">Stock Movements</a></li>
+        <li class="nav-item"><a class="nav-link{% if request.resolver_match.namespace == 'warehouses' %} active{% endif %}" href="{% url 'warehouses:warehouse-list' %}">Warehouses</a></li>
+        <li class="nav-item"><a class="nav-link{% if request.resolver_match.namespace == 'stock-movements' %} active{% endif %}" href="{% url 'stock-movements:stock-movement-list' %}">Stock Movements</a></li>
         {% if can_export_reports %}
           <li class="nav-item"><a class="nav-link" href="{% url 'low-stock-csv' %}">Reports</a></li>
-        {% else %}
-          <li class="nav-item"><span class="nav-link disabled" aria-disabled="true">Reports</span></li>
+        {% endif %}
+        {% if can_view_audit_logs %}
+          <li class="nav-item"><a class="nav-link{% if request.resolver_match.namespace == 'audit-logs' %} active{% endif %}" href="{% url 'audit-logs:audit-log-list' %}">Audit Logs</a></li>
         {% endif %}
       </ul>
       <div class="d-flex align-items-center gap-3 text-white-50">

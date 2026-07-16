@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Audit Logs | StockFlow{% endblock %}
+
+{% block content %}
+  <div class="mb-4"><h1 class="h3 mb-1">Audit Logs</h1><p class="text-body-secondary mb-0">Read-only history of important business actions</p></div>
+  <section class="dashboard-section">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead><tr><th>Timestamp</th><th>Action</th><th>Actor</th><th>Target</th><th>Metadata</th><th>Correlation</th></tr></thead>
+        <tbody>
+          {% for audit_log in page_obj %}
+            <tr>
+              <td class="text-nowrap">{{ audit_log.created_at|date:"M j, Y H:i" }}</td>
+              <td>{{ audit_log.get_action_display }}</td>
+              <td>{{ audit_log.actor|default:"System" }}</td>
+              <td><span class="fw-semibold">{{ audit_log.target_repr }}</span><div class="small text-body-secondary">{{ audit_log.target_model }}:{{ audit_log.target_object_id }}</div></td>
+              <td><code class="small text-break">{{ audit_log.metadata|default:"—"|truncatechars:140 }}</code></td>
+              <td class="small text-break">{{ audit_log.correlation_id|default:"—" }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="6" class="empty-state">No audit logs are available.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% include "partials/pagination.html" %}
+  </section>
+{% endblock %}

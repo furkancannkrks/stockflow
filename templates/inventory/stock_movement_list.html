@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Stock Movements | StockFlow{% endblock %}
+
+{% block content %}
+  <div class="mb-4"><h1 class="h3 mb-1">Stock Movements</h1><p class="text-body-secondary mb-0">Read-only inventory movement history</p></div>
+  <section class="dashboard-section">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead><tr><th>Timestamp</th><th>Product</th><th>Warehouse</th><th>Type</th><th class="text-end">Quantity</th><th>Reference</th><th>Actor</th><th>Description</th></tr></thead>
+        <tbody>
+          {% for movement in page_obj %}
+            <tr>
+              <td class="text-nowrap">{{ movement.created_at|date:"M j, Y H:i" }}</td>
+              <td><a class="text-decoration-none" href="{% url 'inventory:inventory-detail' movement.inventory.id %}">{{ movement.inventory.product.name }}</a><div class="small text-body-secondary">{{ movement.inventory.product.sku }}</div></td>
+              <td>{{ movement.inventory.warehouse.name }}<div class="small text-body-secondary">{{ movement.inventory.warehouse.code }}</div></td>
+              <td>{{ movement.get_movement_type_display }}</td>
+              <td class="text-end tabular-numbers">{{ movement.quantity }}</td>
+              <td>{% if movement.reference_type or movement.reference_id %}{{ movement.reference_type|default:"Reference" }}{% if movement.reference_id %}: {{ movement.reference_id }}{% endif %}{% else %}—{% endif %}</td>
+              <td>{{ movement.created_by|default:"System" }}</td>
+              <td>{{ movement.description|default:"—"|truncatechars:100 }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="8" class="empty-state">No stock movements are available.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% include "partials/pagination.html" %}
+  </section>
+{% endblock %}

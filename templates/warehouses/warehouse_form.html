@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }} | StockFlow{% endblock %}
+
+{% block content %}
+  <div class="mb-4"><a class="small text-decoration-none" href="{% if warehouse %}{% url 'warehouses:warehouse-detail' warehouse.id %}{% else %}{% url 'warehouses:warehouse-list' %}{% endif %}">Warehouses</a><h1 class="h3 mt-2 mb-0">{{ page_title }}</h1></div>
+  <section class="form-panel">
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% include "partials/form_fields.html" %}
+      <div class="d-flex gap-2 pt-2">
+        <button class="btn btn-primary" type="submit">{{ submit_label }}</button>
+        <a class="btn btn-outline-secondary" href="{% if warehouse %}{% url 'warehouses:warehouse-detail' warehouse.id %}{% else %}{% url 'warehouses:warehouse-list' %}{% endif %}">Cancel</a>
+      </div>
+    </form>
+  </section>
+{% endblock %}

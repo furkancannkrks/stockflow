@@ -1,4 +1,4 @@
-from django.db.models import Exists, F, IntegerField, OuterRef, Q, Sum, Value
+from django.db.models import Count, Exists, F, IntegerField, OuterRef, Q, Sum, Value
 from django.db.models.functions import Coalesce
 
 from apps.inventory.models import Inventory, StockMovement
@@ -7,7 +7,7 @@ from apps.inventory.selectors import (
     low_stock_inventory,
     out_of_stock_inventory,
 )
-from apps.products.models import Product
+from apps.products.models import Product, Warehouse
 
 
 def low_stock_inventory_for_product():
@@ -91,3 +91,9 @@ def recent_movements_for_product(product_id, limit=12):
         StockMovement.objects.filter(inventory__product_id=product_id)
         .select_related("inventory__warehouse", "created_by")[:limit]
     )
+
+
+def warehouse_list_queryset():
+    return Warehouse.objects.annotate(
+        inventory_count=Count("inventory_records"),
+    ).order_by("name", "code")

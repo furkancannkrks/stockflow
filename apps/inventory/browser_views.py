@@ -17,12 +17,14 @@ from apps.inventory.selectors import (
     filter_inventory_rows,
     inventory_list_queryset,
     recent_movements_for_inventory,
+    stock_movement_list_queryset,
 )
 from apps.inventory.services import adjust_inventory
 from apps.users.permissions import StockFlowUserRequiredMixin
 
 
 INVENTORY_PER_PAGE = 25
+STOCK_MOVEMENTS_PER_PAGE = 25
 INVENTORY_ADJUSTMENT_ERRORS = (
     InactiveProduct,
     InactiveWarehouse,
@@ -74,6 +76,19 @@ class InventoryDetailView(StockFlowUserRequiredMixin, TemplateView):
                 ),
             }
         )
+        return context
+
+
+class StockMovementListView(StockFlowUserRequiredMixin, TemplateView):
+    template_name = "inventory/stock_movement_list.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        paginator = Paginator(
+            stock_movement_list_queryset(),
+            STOCK_MOVEMENTS_PER_PAGE,
+        )
+        context["page_obj"] = paginator.get_page(self.request.GET.get("page"))
         return context
 
 
