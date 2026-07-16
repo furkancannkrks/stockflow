@@ -21,6 +21,7 @@ from apps.orders.idempotency import (
 )
 from apps.orders.filters import OrderFilter
 from apps.orders.models import Order
+from apps.orders.selectors import orders_with_items_queryset
 from apps.orders.serializers import CancelOrderSerializer, OrderSerializer, OrderWriteSerializer
 from apps.orders.services import cancel_order, confirm_order, reserve_order, ship_order
 from apps.schema import (
@@ -81,11 +82,7 @@ ORDER_NOT_FOUND_RESPONSE = detail_response(
 )
 class OrderViewSet(viewsets.ModelViewSet):
     permission_classes = [ReadOnlyOrManagerPermission]
-    queryset = (
-        Order.objects.prefetch_related("items__product", "items__warehouse")
-        .all()
-        .order_by("-created_at", "-id")
-    )
+    queryset = Order.objects.all().order_by("-created_at", "-id")
     filterset_class = OrderFilter
     ordering_fields = [
         "order_number",
@@ -102,6 +99,21 @@ class OrderViewSet(viewsets.ModelViewSet):
             return OrderWriteSerializer
         return OrderSerializer
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        if self.action in {"list", "retrieve"}:
+            return orders_with_items_queryset(queryset)
+        return queryset
+
+    def _response_data(self, order):
+        hydrated_order = orders_with_items_queryset(
+            Order.objects.filter(pk=order.pk)
+        ).get()
+        return OrderSerializer(
+            hydrated_order,
+            context=self.get_serializer_context(),
+        ).data
+
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -109,7 +121,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             order = serializer.save()
         except Exception as exc:
             return map_domain_exception(exc)
-        return Response(OrderSerializer(order, context=self.get_serializer_context()).data, status=201)
+        return Response(self._response_data(order), status=201)
 
     def partial_update(self, request, *args, **kwargs):
         order = self.get_object()
@@ -119,7 +131,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             order = serializer.save()
         except Exception as exc:
             return map_domain_exception(exc)
-        return Response(OrderSerializer(order, context=self.get_serializer_context()).data)
+        return Response(self._response_data(order))
 
     def destroy(self, request, *args, **kwargs):
         return error_response(
@@ -200,7 +212,7 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         try:
             order = reserve_order(order.id, request.user, correlation_id=idempotency_key)
-            response = Response(OrderSerializer(order, context=self.get_serializer_context()).data)
+            response = Response(self._response_data(order))
         except Exception as exc:
             try:
                 response = map_domain_exception(exc)
@@ -246,7 +258,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             order = confirm_order(self.get_object().id, request.user)
         except Exception as exc:
             return map_domain_exception(exc)
-        return Response(OrderSerializer(order, context=self.get_serializer_context()).data)
+        return Response(self._response_data(order))
 
     @extend_schema(
         summary="Cancel a reserved order",
@@ -291,7 +303,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             )
         except Exception as exc:
             return map_domain_exception(exc)
-        return Response(OrderSerializer(order, context=self.get_serializer_context()).data)
+        return Response(self._response_data(order))
 
     @extend_schema(
         summary="Ship a confirmed order",
@@ -317,4 +329,4 @@ class OrderViewSet(viewsets.ModelViewSet):
             order = ship_order(self.get_object().id, request.user)
         except Exception as exc:
             return map_domain_exception(exc)
-        return Response(OrderSerializer(order, context=self.get_serializer_context()).data)
+        return Response(self._response_data(order))

@@ -20,6 +20,7 @@ class InventoryAdmin(admin.ModelAdmin):
 
 @admin.register(StockMovement)
 class StockMovementAdmin(admin.ModelAdmin):
+    list_select_related = ("inventory__product", "inventory__warehouse", "created_by")
     list_display = (
         "inventory",
         "movement_type",

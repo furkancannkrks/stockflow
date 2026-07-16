@@ -6,6 +6,7 @@ from apps.users.permissions import is_manager
 
 @admin.register(AuditLog)
 class AuditLogAdmin(admin.ModelAdmin):
+    list_select_related = ("actor",)
     list_display = (
         "created_at",
         "action",

@@ -32,6 +32,16 @@ def order_list_queryset():
     return Order.objects.all().order_by("-created_at", "-id")
 
 
+def orders_with_items_queryset(queryset=None):
+    queryset = queryset if queryset is not None else Order.objects.all()
+    return queryset.prefetch_related(
+        Prefetch(
+            "items",
+            queryset=OrderItem.objects.select_related("product", "warehouse").order_by("id"),
+        )
+    )
+
+
 def filter_orders(queryset, *, q="", status="", created_after=None, created_before=None):
     if q:
         queryset = queryset.filter(
@@ -55,9 +65,4 @@ def filter_orders(queryset, *, q="", status="", created_after=None, created_befo
 
 
 def order_detail_queryset():
-    return Order.objects.prefetch_related(
-        Prefetch(
-            "items",
-            queryset=OrderItem.objects.select_related("product", "warehouse").order_by("id"),
-        )
-    )
+    return orders_with_items_queryset()

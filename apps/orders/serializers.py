@@ -26,8 +26,8 @@ class OrderItemReadSerializer(serializers.ModelSerializer):
 
 
 class OrderItemWriteSerializer(serializers.Serializer):
-    product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all())
-    warehouse = serializers.PrimaryKeyRelatedField(queryset=Warehouse.objects.all())
+    product = serializers.IntegerField(min_value=1)
+    warehouse = serializers.IntegerField(min_value=1)
     quantity = serializers.IntegerField(min_value=1)
 
 
@@ -67,18 +67,43 @@ class OrderWriteSerializer(serializers.ModelSerializer):
         fields = ["order_number", "customer_name", "customer_email", "items"]
 
     def validate_items(self, items):
+        product_ids = {item["product"] for item in items}
+        warehouse_ids = {item["warehouse"] for item in items}
+        products = Product.objects.in_bulk(product_ids)
+        warehouses = Warehouse.objects.in_bulk(warehouse_ids)
+        relation_errors = [{} for _item in items]
+
+        for index, item in enumerate(items):
+            product_id = item["product"]
+            warehouse_id = item["warehouse"]
+            if product_id not in products:
+                relation_errors[index]["product"] = [
+                    f'Invalid pk "{product_id}" - object does not exist.'
+                ]
+            if warehouse_id not in warehouses:
+                relation_errors[index]["warehouse"] = [
+                    f'Invalid pk "{warehouse_id}" - object does not exist.'
+                ]
+
+        if any(relation_errors):
+            raise serializers.ValidationError(relation_errors)
+
         seen = set()
         duplicates = []
         for item in items:
-            key = (item["product"].id, item["warehouse"].id)
+            product_id = item["product"]
+            warehouse_id = item["warehouse"]
+            key = (product_id, warehouse_id)
             if key in seen:
                 duplicates.append(
                     {
-                        "product_id": item["product"].id,
-                        "warehouse_id": item["warehouse"].id,
+                        "product_id": product_id,
+                        "warehouse_id": warehouse_id,
                     }
                 )
             seen.add(key)
+            item["product"] = products[product_id]
+            item["warehouse"] = warehouses[warehouse_id]
 
         if duplicates:
             raise serializers.ValidationError(
