@@ -13,9 +13,7 @@ from rest_framework.response import Response
 from apps.api import error_response, map_domain_exception
 from apps.orders.idempotency import (
     ORDER_RESERVE_OPERATION,
-    acquire_idempotency_record,
-    complete_idempotency_record,
-    fail_idempotency_record,
+    execute_idempotent_reservation,
     request_fingerprint,
     reserve_idempotency_key_required_response,
 )
@@ -147,7 +145,9 @@ class OrderViewSet(viewsets.ModelViewSet):
             "Atomically reserve inventory for every order item. The "
             "Idempotency-Key is scoped to the authenticated user and reservation "
             "operation. Repeating the same key and logical request replays the "
-            "stored status and response body without reserving stock again."
+            "stored status and response body without reserving stock again. "
+            "Unexpired in-progress or failed records return a conflict; expired "
+            "records are reclaimed and processed as new ownership attempts."
         ),
         parameters=[
             OpenApiParameter(
@@ -171,8 +171,8 @@ class OrderViewSet(viewsets.ModelViewSet):
             403: PERMISSION_DENIED_RESPONSE,
             404: ORDER_NOT_FOUND_RESPONSE,
             409: api_error_response(
-                "Idempotency conflict, in-progress request, insufficient stock, "
-                "or invalid order transition.",
+                "Idempotency conflict, in-progress or failed request, insufficient "
+                "stock, or invalid order transition.",
                 IDEMPOTENCY_CONFLICT_EXAMPLE,
                 INSUFFICIENT_STOCK_EXAMPLE,
                 INVALID_TRANSITION_EXAMPLE,
@@ -198,41 +198,25 @@ class OrderViewSet(viewsets.ModelViewSet):
             order_id=order.id,
             body=request.data,
         )
-        record, should_process, duplicate_response = acquire_idempotency_record(
+
+        def execute_reservation():
+            try:
+                reserved_order = reserve_order(
+                    order.id,
+                    request.user,
+                    correlation_id=idempotency_key,
+                )
+                return Response(self._response_data(reserved_order))
+            except Exception as exc:
+                return map_domain_exception(exc)
+
+        return execute_idempotent_reservation(
             actor=request.user,
             key=idempotency_key,
             order=order,
             fingerprint=fingerprint,
+            execute=execute_reservation,
         )
-
-        if duplicate_response is not None:
-            return duplicate_response
-
-        if not should_process:
-            return Response(record.response_body, status=record.response_status_code)
-
-        try:
-            order = reserve_order(order.id, request.user, correlation_id=idempotency_key)
-            response = Response(self._response_data(order))
-        except Exception as exc:
-            try:
-                response = map_domain_exception(exc)
-            except Exception:
-                fail_idempotency_record(record)
-                raise
-            complete_idempotency_record(
-                record,
-                response_status_code=response.status_code,
-                response_body=response.data,
-            )
-            return response
-
-        complete_idempotency_record(
-            record,
-            response_status_code=response.status_code,
-            response_body=response.data,
-        )
-        return response
 
     @extend_schema(
         summary="Confirm a reserved order",
