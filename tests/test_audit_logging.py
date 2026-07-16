@@ -9,7 +9,7 @@ from apps.inventory.services import adjust_inventory
 from apps.orders.exceptions import InsufficientStock
 from apps.orders.models import Order, OrderItem
 from apps.orders.services import cancel_order, confirm_order, reserve_order
-from apps.orders.tasks import expire_reserved_orders
+from apps.orders.tasks import expire_reserved_order
 from apps.products.models import Product, Warehouse
 from apps.products.services import update_product
 from apps.users.models import User
@@ -185,12 +185,12 @@ def test_expiration_cancellation_creates_one_audit_record_without_duplicates():
     order.reserved_at = timezone.now() - timedelta(minutes=31)
     order.save(update_fields=["reserved_at", "updated_at"])
 
-    first = expire_reserved_orders.run()
-    second = expire_reserved_orders.run()
+    first = expire_reserved_order.run(order.id)
+    second = expire_reserved_order.run(order.id)
 
     audit = AuditLog.objects.get()
-    assert first == {"expired": 1, "skipped": 0}
-    assert second == {"expired": 0, "skipped": 0}
+    assert first == {"order_id": order.id, "status": "expired"}
+    assert second == {"order_id": order.id, "status": "skipped"}
     assert audit.actor is None
     assert audit.action == AuditLog.Action.ORDER_CANCELLED
     assert audit.metadata["source"] == "expiration"
