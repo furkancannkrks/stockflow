@@ -319,6 +319,25 @@ def test_insufficient_stock_conflict_is_displayed_clearly(client):
     assert inventory.reserved_quantity == 1
 
 
+def test_empty_order_reservation_error_is_displayed(client):
+    user = create_user()
+    order = create_order()
+    client.force_login(user)
+
+    response = client.post(f"/orders/{order.id}/reserve/", follow=True)
+
+    order.refresh_from_db()
+    assert response.status_code == 200
+    assert (
+        "An order must contain at least one item before it can be reserved"
+        in response.content.decode("utf-8")
+    )
+    assert order.status == Order.Status.DRAFT
+    assert order.reserved_at is None
+    assert StockMovement.objects.count() == 0
+    assert AuditLog.objects.count() == 0
+
+
 def test_warehouse_staff_can_view_orders_but_cannot_write_or_transition(client):
     user = create_user("order-staff", User.Role.WAREHOUSE_STAFF)
     product = create_product()

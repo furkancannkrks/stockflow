@@ -15,7 +15,24 @@ class InventoryAdmin(admin.ModelAdmin):
     )
     list_filter = ("warehouse", "product__category")
     search_fields = ("product__name", "product__sku", "warehouse__name", "warehouse__code")
-    readonly_fields = ("available_quantity", "created_at", "updated_at")
+    readonly_fields = (
+        "product",
+        "warehouse",
+        "quantity",
+        "reserved_quantity",
+        "available_quantity",
+        "created_at",
+        "updated_at",
+    )
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(StockMovement)

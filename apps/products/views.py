@@ -14,6 +14,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
     permission_classes = [ReadOnlyOrManagerPermission]
     queryset = Product.objects.all().order_by("name", "sku")
+    http_method_names = ["get", "post", "patch", "delete", "head", "options"]
     filterset_class = ProductFilter
     ordering_fields = [
         "name",

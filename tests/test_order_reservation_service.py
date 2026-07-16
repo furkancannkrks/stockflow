@@ -8,6 +8,7 @@ from django.utils import timezone
 
 from apps.inventory.models import Inventory, StockMovement
 from apps.orders.exceptions import (
+    EmptyOrder,
     InactiveProduct,
     InactiveWarehouse,
     InsufficientStock,
@@ -212,6 +213,25 @@ def test_invalid_order_status_rejects_reservation():
         reserve_order(order.id, user)
 
     assert exc_info.value.details[0]["current_status"] == Order.Status.CONFIRMED
+
+
+def test_empty_order_cannot_be_reserved():
+    user = create_user()
+    order = create_order()
+
+    with pytest.raises(EmptyOrder) as exc_info:
+        reserve_order(order.id, user)
+
+    order.refresh_from_db()
+    assert exc_info.value.details == [
+        {
+            "order_id": order.id,
+            "order_number": order.order_number,
+        }
+    ]
+    assert order.status == Order.Status.DRAFT
+    assert order.reserved_at is None
+    assert StockMovement.objects.count() == 0
 
 
 def test_missing_inventory_row_rejects_reservation():

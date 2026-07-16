@@ -104,6 +104,46 @@ def test_product_crud_and_patch_uses_update_service_audit(client):
     assert delete_response.status_code == 204
 
 
+def test_product_and_order_put_are_not_allowed(client):
+    product = create_product()
+    order = create_order()
+
+    product_response = client.put(
+        f"/api/products/{product.id}/",
+        {
+            "name": "PUT Product",
+            "sku": product.sku,
+            "category": product.category,
+            "unit_price": "99.00",
+            "low_stock_threshold": 5,
+            "is_active": False,
+        },
+        format="json",
+    )
+    order_response = client.put(
+        f"/api/orders/{order.id}/",
+        {
+            "order_number": order.order_number,
+            "customer_name": "PUT Customer",
+            "customer_email": "put@example.com",
+        },
+        format="json",
+    )
+    order_delete_response = client.delete(f"/api/orders/{order.id}/")
+
+    product.refresh_from_db()
+    order.refresh_from_db()
+    assert product_response.status_code == 405
+    assert order_response.status_code == 405
+    assert order_delete_response.status_code == 405
+    assert order_delete_response.data["error"]["code"] == "METHOD_NOT_ALLOWED"
+    assert product.name == "Product SKU-1"
+    assert product.unit_price == Decimal("10.00")
+    assert order.customer_name == "Customer"
+    assert Order.objects.filter(pk=order.pk).exists()
+    assert AuditLog.objects.count() == 0
+
+
 def test_warehouse_endpoints(client):
     create_response = client.post(
         "/api/warehouses/",
@@ -267,6 +307,23 @@ def test_order_transition_actions_use_services_and_error_structure(client):
     ship_response = client.post(f"/api/orders/{order.id}/ship/")
     assert ship_response.status_code == 200
     assert ship_response.data["status"] == Order.Status.SHIPPED
+
+
+def test_empty_order_reservation_returns_conflict_without_domain_changes(client):
+    order = create_order()
+
+    response = client.post(
+        f"/api/orders/{order.id}/reserve/",
+        HTTP_IDEMPOTENCY_KEY="empty-order-reservation",
+    )
+
+    order.refresh_from_db()
+    assert response.status_code == 409
+    assert response.data["error"]["code"] == "EMPTY_ORDER"
+    assert order.status == Order.Status.DRAFT
+    assert order.reserved_at is None
+    assert StockMovement.objects.count() == 0
+    assert AuditLog.objects.count() == 0
 
 
 def test_order_cancel_action(client):

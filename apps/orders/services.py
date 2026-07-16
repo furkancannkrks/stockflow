@@ -9,6 +9,7 @@ from apps.audit.services import create_audit_log
 from apps.inventory.models import Inventory, StockMovement
 from apps.orders.exceptions import (
     DuplicateOrderItem,
+    EmptyOrder,
     InactiveProduct,
     InactiveWarehouse,
     InvalidCancellationSource,
@@ -126,6 +127,7 @@ def reserve_order(order_id: int, performed_by, correlation_id: str = "") -> Orde
         order = _get_locked_order_for_transition(order_id, Order.Status.DRAFT)
 
         items = _get_order_items(order)
+        _validate_order_has_items(order, items)
         _validate_item_quantities(items)
         _validate_active_products(items)
         _validate_active_warehouses(items)
@@ -334,6 +336,18 @@ def _get_order_items(order: Order) -> list[OrderItem]:
         .filter(order=order)
         .order_by("product_id", "warehouse_id", "id")
     )
+
+
+def _validate_order_has_items(order: Order, items: list[OrderItem]) -> None:
+    if not items:
+        raise EmptyOrder(
+            details=[
+                {
+                    "order_id": order.id,
+                    "order_number": order.order_number,
+                }
+            ]
+        )
 
 
 def _inventory_keys_for_items(items: list[OrderItem]) -> list[tuple[int, int]]:

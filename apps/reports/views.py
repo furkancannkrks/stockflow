@@ -24,11 +24,19 @@ CSV_COLUMNS = [
     "low_stock_threshold",
     "generated_at",
 ]
+SPREADSHEET_FORMULA_PREFIXES = ("=", "+", "-", "@")
 
 
 class Echo:
     def write(self, value):
         return value
+
+
+def spreadsheet_safe_text(value):
+    text = str(value)
+    if text.startswith(SPREADSHEET_FORMULA_PREFIXES):
+        return f"'{text}"
+    return text
 
 
 def low_stock_csv_rows(generated_at):
@@ -43,11 +51,11 @@ def low_stock_csv_rows(generated_at):
     for inventory in queryset.iterator(chunk_size=2000):
         yield [
             inventory.product_id,
-            inventory.product.name,
-            inventory.product.sku,
-            inventory.product.category,
+            spreadsheet_safe_text(inventory.product.name),
+            spreadsheet_safe_text(inventory.product.sku),
+            spreadsheet_safe_text(inventory.product.category),
             inventory.warehouse_id,
-            inventory.warehouse.name,
+            spreadsheet_safe_text(inventory.warehouse.name),
             inventory.quantity,
             inventory.reserved_quantity,
             inventory.available_quantity_value,

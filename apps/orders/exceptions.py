@@ -38,6 +38,11 @@ class InvalidOrderItemQuantity(StockFlowDomainError):
     default_message = "Order item quantities must be positive."
 
 
+class EmptyOrder(StockFlowDomainError):
+    code = "EMPTY_ORDER"
+    default_message = "An order must contain at least one item before it can be reserved."
+
+
 class InvalidCancellationSource(StockFlowDomainError):
     code = "INVALID_CANCELLATION_SOURCE"
     default_message = "Cancellation source must be manual or expiration."

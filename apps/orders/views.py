@@ -83,6 +83,7 @@ ORDER_NOT_FOUND_RESPONSE = detail_response(
 class OrderViewSet(viewsets.ModelViewSet):
     permission_classes = [ReadOnlyOrManagerPermission]
     queryset = Order.objects.all().order_by("-created_at", "-id")
+    http_method_names = ["get", "post", "patch", "delete", "head", "options"]
     filterset_class = OrderFilter
     ordering_fields = [
         "order_number",

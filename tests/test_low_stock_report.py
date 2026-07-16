@@ -28,11 +28,11 @@ def client():
     return api_client
 
 
-def create_product(sku, name, threshold):
+def create_product(sku, name, threshold, category="Parts, Components"):
     return Product.objects.create(
         name=name,
         sku=sku,
-        category="Parts, Components",
+        category=category,
         unit_price=Decimal("10.00"),
         low_stock_threshold=threshold,
     )
@@ -116,6 +116,33 @@ def test_low_stock_csv_uses_one_query_for_multiple_rows(client, django_assert_nu
         rows = response_rows(response)
 
     assert len(rows) == 12
+
+
+def test_low_stock_csv_escapes_spreadsheet_formula_prefixes(client):
+    product = create_product(
+        "+FORMULA-SKU",
+        "=FORMULA-NAME",
+        threshold=5,
+        category="-FORMULA-CATEGORY",
+    )
+    warehouse = create_warehouse("FORMULA-WH", "@FORMULA-WAREHOUSE")
+    Inventory.objects.create(product=product, warehouse=warehouse, quantity=1)
+
+    rows = response_rows(client.get("/api/reports/low-stock.csv"))
+
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["product_id"] == str(product.id)
+    assert row["product_name"] == "'=FORMULA-NAME"
+    assert row["sku"] == "'+FORMULA-SKU"
+    assert row["category"] == "'-FORMULA-CATEGORY"
+    assert row["warehouse_id"] == str(warehouse.id)
+    assert row["warehouse_name"] == "'@FORMULA-WAREHOUSE"
+    assert row["quantity"] == "1"
+    assert row["reserved_quantity"] == "0"
+    assert row["available_quantity"] == "1"
+    assert row["low_stock_threshold"] == "5"
+    assert timezone.is_aware(datetime.fromisoformat(row["generated_at"]))
 
 
 def test_low_stock_csv_rejects_unauthenticated_requests():

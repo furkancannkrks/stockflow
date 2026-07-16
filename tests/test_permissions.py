@@ -7,8 +7,10 @@ from rest_framework.test import APIClient
 
 from apps.audit.admin import AuditLogAdmin
 from apps.audit.models import AuditLog
+from apps.inventory.admin import InventoryAdmin
 from apps.inventory.models import Inventory
-from apps.orders.models import Order
+from apps.orders.admin import OrderAdmin, OrderItemAdmin, OrderItemInline
+from apps.orders.models import Order, OrderItem
 from apps.products.models import Product, Warehouse
 from apps.users.models import User
 
@@ -247,6 +249,54 @@ def test_audit_admin_visibility_is_manager_only(manager, warehouse_staff):
     assert admin.has_module_permission(staff_request) is False
     assert admin.has_view_permission(staff_request) is False
     assert admin.has_view_permission(superuser_request) is True
+
+
+def test_domain_admins_are_read_only_inspection_surfaces():
+    site = AdminSite()
+    order_admin = OrderAdmin(Order, site)
+    order_item_inline = OrderItemInline(Order, site)
+    order_item_admin = OrderItemAdmin(OrderItem, site)
+    inventory_admin = InventoryAdmin(Inventory, site)
+
+    assert set(order_admin.readonly_fields) == {
+        "order_number",
+        "customer_name",
+        "customer_email",
+        "status",
+        "total_amount",
+        "reserved_at",
+        "created_at",
+        "updated_at",
+    }
+    assert set(order_item_inline.readonly_fields) == set(order_item_inline.fields)
+    assert set(order_item_admin.readonly_fields) == {
+        "order",
+        "product",
+        "warehouse",
+        "quantity",
+        "unit_price",
+        "subtotal",
+        "created_at",
+    }
+    assert set(inventory_admin.readonly_fields) == {
+        "product",
+        "warehouse",
+        "quantity",
+        "reserved_quantity",
+        "available_quantity",
+        "created_at",
+        "updated_at",
+    }
+
+    for model_admin in (order_admin, order_item_admin, inventory_admin):
+        assert model_admin.has_add_permission(None) is False
+        assert model_admin.has_change_permission(None) is False
+        assert model_admin.has_delete_permission(None) is False
+
+    assert order_item_inline.can_delete is False
+    assert order_item_inline.has_add_permission(None) is False
+    assert order_item_inline.has_change_permission(None) is False
+    assert order_item_inline.has_delete_permission(None) is False
 
 
 def test_browser_login_and_logout(client):
