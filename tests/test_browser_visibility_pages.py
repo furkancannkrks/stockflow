@@ -151,7 +151,7 @@ def test_audit_log_page_displays_empty_metadata_as_dash(client):
 
     assert response.status_code == 200
     assert b'data-metadata-empty="true">-</span>' in response.content
-    assert b"View metadata" not in response.content
+    assert b"Raw metadata" not in response.content
 
 
 def test_audit_log_page_pretty_prints_nested_metadata(client):
@@ -181,8 +181,8 @@ def test_audit_log_page_pretty_prints_nested_metadata(client):
     )
 
     assert response.status_code == 200
-    assert b"<details>" in response.content
-    assert b"View metadata" in response.content
+    assert b"<details" in response.content
+    assert b"Raw metadata" in response.content
     assert str(expected_json) in response.content.decode()
 
 
@@ -212,6 +212,104 @@ def test_audit_log_metadata_escapes_html_and_script_content(client):
     assert "<script>" not in content
     assert "<img src=" not in content
     assert str(escaped_json) in content
+
+
+def test_inventory_audit_metadata_has_business_friendly_summary(client):
+    manager = create_user("audit-inventory-summary-manager")
+    AuditLog.objects.create(
+        actor=manager,
+        action=AuditLog.Action.INVENTORY_ADJUSTED,
+        target_model="Inventory",
+        target_object_id="1",
+        target_repr="FRIENDLY-SKU at MAIN",
+        metadata={
+            "adjustment_type": "stock_in",
+            "description": "Supplier delivery",
+            "quantity": {"before": 10, "after": 14},
+            "product": {"id": 1, "sku": "FRIENDLY-SKU"},
+            "warehouse": {"id": 1, "code": "MAIN"},
+        },
+    )
+    client.force_login(manager)
+
+    content = client.get("/audit-logs/").content.decode()
+
+    assert "Product:</dt>" in content
+    assert "FRIENDLY-SKU" in content
+    assert "Warehouse:</dt>" in content
+    assert "MAIN" in content
+    assert "Quantity:</dt>" in content
+    assert "10 → 14" in content
+    assert "Adjustment:</dt>" in content
+    assert "Stock in" in content
+    assert "Description:</dt>" in content
+    assert "Supplier delivery" in content
+
+
+def test_order_audit_metadata_has_business_friendly_summary(client):
+    manager = create_user("audit-order-summary-manager")
+    AuditLog.objects.create(
+        actor=manager,
+        action=AuditLog.Action.ORDER_CANCELLED,
+        target_model="Order",
+        target_object_id="1",
+        target_repr="FRIENDLY-ORDER",
+        metadata={
+            "order": {
+                "order_number": "FRIENDLY-ORDER",
+                "status": {"before": "reserved", "after": "cancelled"},
+                "total_amount": "42.50",
+            },
+            "items": [{"quantity": 2}, {"quantity": 1}],
+            "reason": "Customer request",
+            "source": "manual",
+        },
+    )
+    client.force_login(manager)
+
+    content = client.get("/audit-logs/").content.decode()
+
+    assert "Status:</dt>" in content
+    assert "reserved → cancelled" in content
+    assert "Items:</dt>" in content
+    assert ">2</dd>" in content
+    assert "Total:</dt>" in content
+    assert "42.50" in content
+    assert "Reason:</dt>" in content
+    assert "Customer request" in content
+    assert "Source:</dt>" in content
+    assert "Manual" in content
+    assert "Raw metadata" in content
+
+
+def test_audit_operation_id_has_friendly_empty_and_seed_states(client):
+    manager = create_user("audit-operation-id-manager")
+    AuditLog.objects.create(
+        actor=manager,
+        action=AuditLog.Action.PRODUCT_UPDATED,
+        target_model="Product",
+        target_object_id="1",
+        target_repr="Unlinked product",
+        metadata={"changes": {"name": {"before": "Old", "after": "New"}}},
+        correlation_id="",
+    )
+    AuditLog.objects.create(
+        actor=manager,
+        action=AuditLog.Action.INVENTORY_ADJUSTED,
+        target_model="Inventory",
+        target_object_id="2",
+        target_repr="Seed inventory",
+        metadata={"source": "seed"},
+        correlation_id="seed:inventory:FRIENDLY-SKU:MAIN",
+    )
+    client.force_login(manager)
+
+    content = client.get("/audit-logs/").content.decode()
+
+    assert "Operation ID" in content
+    assert "Not linked" in content
+    assert "Seed data" in content
+    assert 'title="seed:inventory:FRIENDLY-SKU:MAIN"' in content
 
 
 def test_warehouse_pages_allow_shared_read_but_manager_only_mutation(client):
