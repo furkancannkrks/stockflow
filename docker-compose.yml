@@ -1,0 +1,101 @@
+name: stockflow
+
+x-app: &stockflow-app
+  image: stockflow-app:local
+  build:
+    context: .
+    dockerfile: Dockerfile
+  environment:
+    DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-django-insecure-docker-development-key-change-me}
+    DJANGO_DEBUG: ${DJANGO_DEBUG:-True}
+    DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,0.0.0.0}
+    DB_NAME: ${DB_NAME:-stockflow}
+    DB_USER: ${DB_USER:-stockflow}
+    DB_PASSWORD: ${DB_PASSWORD:-stockflow-development-password}
+    DB_HOST: db
+    DB_PORT: "5432"
+    CELERY_BROKER_URL: redis://redis:6379/0
+    CELERY_RESULT_BACKEND: redis://redis:6379/1
+    CELERY_TIMEZONE: ${CELERY_TIMEZONE:-UTC}
+    STOCKFLOW_DEMO_MANAGER_PASSWORD: ${STOCKFLOW_DEMO_MANAGER_PASSWORD:-}
+    STOCKFLOW_DEMO_STAFF_PASSWORD: ${STOCKFLOW_DEMO_STAFF_PASSWORD:-}
+  depends_on:
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  init: true
+  stop_signal: SIGTERM
+  stop_grace_period: 30s
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME:-stockflow}
+      POSTGRES_USER: ${DB_USER:-stockflow}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-stockflow-development-password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  redis:
+    image: redis:7.4-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 3s
+
+  web:
+    <<: *stockflow-app
+    command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+    ports:
+      - "${WEB_PORT:-8000}:8000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/', timeout=2)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  celery_worker:
+    <<: *stockflow-app
+    command:
+      [
+        "celery",
+        "-A",
+        "config",
+        "worker",
+        "--loglevel=INFO",
+        "--concurrency=2",
+      ]
+
+  celery_beat:
+    <<: *stockflow-app
+    container_name: stockflow_celery_beat
+    command:
+      [
+        "celery",
+        "-A",
+        "config",
+        "beat",
+        "--loglevel=INFO",
+        "--schedule=/tmp/celerybeat-schedule",
+        "--pidfile=/tmp/celerybeat.pid",
+      ]
+
+volumes:
+  postgres_data:

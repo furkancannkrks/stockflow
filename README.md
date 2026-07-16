@@ -44,9 +44,94 @@ py -3 -m pip install -r requirements.txt
 py -3 manage.py migrate
 ```
 
-`CELERY_BROKER_URL` and `CELERY_RESULT_BACKEND` are present now as configuration
-placeholders. Later Celery prompts will use Redis at those URLs for background
-jobs and result storage.
+Celery uses Redis as its broker and result backend. When running directly on the
+host, the example URLs connect to Redis on `localhost`.
+
+## Docker Compose
+
+The Compose stack contains:
+
+- `web`: Django development server
+- `db`: PostgreSQL with a persistent named volume
+- `redis`: Celery broker and result backend
+- `celery_worker`: Celery worker
+- `celery_beat`: the single reservation-expiration scheduler
+
+`web`, `celery_worker`, and `celery_beat` use the same application image.
+Compose overrides the database and Redis hostnames with the service names `db`
+and `redis`. The committed fallback credentials are development placeholders;
+put local values in `.env` and never commit real secrets.
+
+Validate the resolved configuration:
+
+```bash
+docker compose config
+```
+
+For the simplest startup, build and start the complete stack, then run
+migrations explicitly:
+
+```bash
+docker compose up --build -d
+docker compose exec web python manage.py migrate
+```
+
+On a completely empty database, this sequence avoids Beat dispatching a task
+before migrations have been applied:
+
+```bash
+docker compose build
+docker compose up -d db redis
+docker compose run --rm web python manage.py migrate
+docker compose up -d
+```
+
+Migrations and demo data are never run automatically. Run them deliberately:
+
+```bash
+docker compose exec web python manage.py migrate
+docker compose exec web python manage.py seed_data
+```
+
+Run Django checks and the test suite inside the shared application image:
+
+```bash
+docker compose exec web python manage.py check
+docker compose exec web pytest
+```
+
+Confirm PostgreSQL and Redis connectivity:
+
+```bash
+docker compose exec db sh -c 'pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+docker compose exec redis redis-cli ping
+```
+
+Inspect Celery worker availability and registered tasks:
+
+```bash
+docker compose exec celery_worker celery -A config inspect ping
+docker compose exec celery_worker celery -A config inspect registered
+```
+
+The registered task list should include
+`apps.orders.tasks.expire_reserved_orders`. Inspect worker and scheduler logs
+with:
+
+```bash
+docker compose logs celery_worker
+docker compose logs celery_beat
+```
+
+Compose defines one `celery_beat` service with the fixed container name
+`stockflow_celery_beat`, preventing that scheduler from being scaled into
+multiple simultaneous instances. The application containers receive `SIGTERM`
+and have a 30-second stop grace period:
+
+```bash
+docker compose stop -t 30
+docker compose down
+```
 
 ## Demo Data
 
