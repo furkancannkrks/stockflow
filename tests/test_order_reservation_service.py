@@ -1,6 +1,9 @@
+from concurrent.futures import ThreadPoolExecutor
 from decimal import Decimal
+from threading import Barrier
 
 import pytest
+from django.db import close_old_connections
 from django.utils import timezone
 
 from apps.inventory.models import Inventory, StockMovement
@@ -250,3 +253,56 @@ def test_inventory_locks_and_movements_follow_deterministic_key_order():
         StockMovement.objects.order_by("id").values_list("inventory_id", flat=True)
     )
     assert movement_inventory_ids == [inventory_1.id, inventory_2.id]
+
+
+@pytest.mark.django_db(transaction=True)
+def test_concurrent_competing_orders_do_not_oversell_inventory():
+    user = create_user(username="concurrent-manager")
+    product = create_product(price="5.00")
+    warehouse = create_warehouse()
+    inventory = Inventory.objects.create(
+        product=product,
+        warehouse=warehouse,
+        quantity=5,
+    )
+    first_order = create_order(order_number="ORD-CONCURRENT-1")
+    second_order = create_order(order_number="ORD-CONCURRENT-2")
+    create_order_item(first_order, product, warehouse, quantity=4)
+    create_order_item(second_order, product, warehouse, quantity=4)
+    start_barrier = Barrier(2)
+
+    def attempt_reservation(order_id):
+        close_old_connections()
+        actor = User.objects.get(pk=user.id)
+        start_barrier.wait(timeout=10)
+        try:
+            reserve_order(order_id, actor)
+        except InsufficientStock:
+            result = "insufficient"
+        else:
+            result = "reserved"
+        finally:
+            close_old_connections()
+        return result
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        results = list(
+            executor.map(
+                attempt_reservation,
+                [first_order.id, second_order.id],
+            )
+        )
+
+    inventory.refresh_from_db()
+    statuses = list(
+        Order.objects.filter(id__in=[first_order.id, second_order.id]).values_list(
+            "status",
+            flat=True,
+        )
+    )
+    assert sorted(results) == ["insufficient", "reserved"]
+    assert inventory.quantity == 5
+    assert inventory.reserved_quantity == 4
+    assert statuses.count(Order.Status.RESERVED) == 1
+    assert statuses.count(Order.Status.DRAFT) == 1
+    assert StockMovement.objects.count() == 1
